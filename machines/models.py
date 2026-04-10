@@ -1,6 +1,11 @@
 from django.db import models
 
+class Godet(models.Model):
+    valeur = models.CharField(max_length=50, unique=True)
 
+    def __str__(self):
+        return self.valeur
+    
 class ReglageEKO(models.Model):
     # =====================================================
     # IDENTIFICATION / TRACABILITÉ
