@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Supprimer {{ reglage.ref }}</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 750px;
+            margin: 40px auto;
+            padding: 20px;
+            line-height: 1.5;
+            background: #f7f7f7;
+        }
+
+        h1 {
+            font-size: 26px;
+            color: #b30000;
+            margin-bottom: 25px;
+        }
+
+        .box {
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 6px;
+            border: 2px solid #cc0000;
+            margin-bottom: 30px;
+        }
+
+        .box ul {
+            margin: 10px 0 20px 20px;
+        }
+
+        .btn {
+            padding: 12px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 6px;
+            display: inline-block;
+            margin-right: 12px;
+            text-decoration: none;
+        }
+
+        .btn-danger {
+            background: #d9534f;
+            color: #fff;
+            border: none;
+        }
+
+        .btn-cancel {
+            background: #ccc;
+            color: #000;
+            border: 1px solid #999;
+        }
+    </style>
+</head>
+
+<body>
+
+<form method="post" action="{% url 'logout' %}" style="display:inline;">
+    {% csrf_token %}
+    <button type="submit">
+        🚪 Déconnexion
+    </button>
+</form>
+
+
+    <h1>Supprimer le réglage : {{ reglage.ref }}</h1>
+
+    <div class="box">
+        <p><strong>⚠️ Attention :</strong> cette action est <u>définitive</u>.</p>
+
+        <p>Le réglage suivant sera supprimé :</p>
+
+        <ul>
+            <li><strong>Référence :</strong> {{ reglage.ref }}</li>
+            <li><strong>Numéro OF :</strong> {{ reglage.numeros_of }}</li>
+            <li><strong>Lot :</strong> {{ reglage.numeros_lot }}</li>
+            <li>Les liaisons OF (précédent / lavage) seront également retirées.</li>
+        </ul>
+
+        <p>Confirme‑tu vouloir supprimer ce réglage ?</p>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+
+        <button type="submit" class="btn btn-danger">
+            ❌ Supprimer définitivement
+        </button>
+
+        <button type="button"
+            onclick="window.location.href='/reglage/{{ reglage.id }}/'"
+            class="btn btn-cancel"
+            style="background:#ccc; border:1px solid #999; padding:10px 14px; font-size="btn btn-save"
+            style="background:#4CAF50; color:white; padding:10px 14px; font-size:15px; cursor:pointer;">
+        Annuler
+        
+        </button>
+               
+</body>
+</html>

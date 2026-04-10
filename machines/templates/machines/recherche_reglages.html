@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Recherche réglages machine</title>
+
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #999;
+            padding: 8px;
+        }
+        tr:hover {
+            background-color: #eef;
+        }
+        a.rowlink {
+            display: block;
+            width: 100%;
+            height: 100%;
+            color: inherit;
+            text-decoration: none;
+        }
+    </style>
+</head>
+
+<body>
+
+<form method="post" action="{% url 'logout' %}" style="display:inline;">
+    {% csrf_token %}
+    <button type="submit">
+        🚪 Déconnexion
+    </button>
+</form>
+
+</a>
+
+<h1>Recherche de réglages machine</h1>
+
+<form method="get">
+    <label>Référence produit :</label>
+    <input type="text" name="ref"><br><br>
+
+    <label>Nom produit :</label>
+    <input type="text" name="nom"><br><br>
+
+    <label>Numéro de lot :</label>
+    <input type="text" name="lot"><br><br>
+
+    <label>Numéro OF :</label>
+    <input type="text" name="of"><br><br>
+
+    <label>Volume :</label>
+    <input type="text" name="volume"><br><br>
+
+    <button type="submit">Rechercher</button>
+</form>
+
+<hr>
+
+<h2>Résultats</h2>
+
+{% if reglages %}
+<table>
+    <tr>
+        <th>Référence</th>
+        <th>Nom produit</th>
+        <th>OF</th>
+        <th>Lot</th>
+        <th>Volume</th>
+    </tr>
+
+    {% for r in reglages %}
+    <tr>
+        <td><a class="rowlink" href="{% url 'detail_reglage' r.id %}">{{ r.ref }}</a></td>
+        <td><a class="rowlink" href="{% url 'detail_reglage' r.id %}">{{ r.nom_produit }}</a></td>
+        <td><a class="rowlink" href="{% url 'detail_reglage' r.id %}">{{ r.numeros_of }}</a></td>
+        <td><a class="rowlink" href="{% url 'detail_reglage' r.id %}">{{ r.numeros_lot }}</a></td>
+        <td><a class="rowlink" href="{% url 'detail_reglage' r.id %}">{{ r.volume }}</a></td>
+    </tr>
+    {% endfor %}
+</table>
+{% else %}
+<p>Aucun réglage trouvé.</p>
+{% endif %}
+
+</body>
+</html>
