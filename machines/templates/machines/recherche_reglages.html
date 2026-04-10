@@ -29,12 +29,36 @@
 
 <body>
 
-<form method="post" action="{% url 'logout' %}" style="display:inline;">
-    {% csrf_token %}
-    <button type="submit">
-        🚪 Déconnexion
-    </button>
-</form>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+
+        <!-- Infos utilisateur -->
+        <div>
+            👤 {{ request.user.username }}
+        </div>
+
+        <!-- Actions -->
+        <div>
+            {% if perms.machines.add_reglageeko %}
+                <a href="{% url 'create_reglage' %}">
+                    <button style="padding:8px 12px;">
+                        ➕ Nouveau réglage
+                    </button>
+                </a>
+            {% endif %}
+
+            <!-- Logout POST (Django 6) -->
+            <form action="{% url 'logout' %}" method="post" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" style="padding:8px 12px;">
+                    🚪 Déconnexion
+                </button>
+            </form>
+        </div>
+
+    </div>
+    <hr>
+
 
 </a>
 

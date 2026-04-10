@@ -53,7 +53,7 @@
             class="btn btn-cancel"
             style="background:#ccc; border:1px solid #999; padding:10px 14px; font-size="btn btn-save"
             style="background:#4CAF50; color:white; padding:10px 14px; font-size:15px; cursor:pointer;">
-        ⬅{{ reglage.ref }}
+        Retour (Annuler)
         
     </button>
 
@@ -103,24 +103,36 @@
     <h2>Liaisons OF</h2>
 
     <!-- OF précédent -->
-    <label>OF précédent :</label>
-    <input id="search_of_precedent" type="text"
-           value="{% if reglage.of_precedent %}{{ reglage.of_precedent.numeros_of }}{% endif %}"
-           placeholder="Rechercher un OF...">
-    <input type="hidden" name="of_precedent" id="of_precedent"
-           value="{% if reglage.of_precedent %}{{ reglage.of_precedent.id }}{% endif %}">
-    <div id="result_of_precedent" class="autocomplete-box"></div>
-    <br>
+    <label for="of_precedent">OF précédent :</label>
 
+    <select name="of_precedent" id="of_precedent">
+        <option value="">---</option>
+
+        {% for of in ofs %}
+            <option value="{{ of.id }}"
+                {% if reglage.of_precedent and reglage.of_precedent.id == of.id %}
+                    selected
+                {% endif %}>
+                {{ of.numeros_of }} - {{ of.numeros_lot}} - {{ of.nom_produit }}  
+            </option>
+        {% endfor %}
+    </select>
+<br>
     <!-- OF lavage -->
-    <label>OF lavage :</label>
-    <input id="search_of_lavage" type="text"
-           value="{% if reglage.of_lavage %}{{ reglage.of_lavage.numeros_of }}{% endif %}"
-           placeholder="Rechercher un OF...">
-    <input type="hidden" name="of_lavage" id="of_lavage"
-           value="{% if reglage.of_lavage %}{{ reglage.of_lavage.id }}{% endif %}">
-    <div id="result_of_lavage" class="autocomplete-box"></div>
+     <label for="of_lavage">OF lavage :</label>
 
+    <select name="of_lavage" id="of_lavage">
+        <option value="">---</option>
+
+        {% for of in ofs %}
+            <option value="{{ of.id }}"
+                {% if reglage.of_lavage and reglage.of_lavage.id == of.id %}
+                    selected
+                {% endif %}>
+                {{ of.numeros_of }} - {{ of.numeros_lot}} - {{ of.nom_produit }} 
+            </option>
+        {% endfor %}
+    </select>
 
     <!-- =========================== -->
     <!-- SECTION 3 : REMPLISSAGE -->
@@ -129,7 +141,28 @@
 
     <label>Moussant :</label> <input type="text" name="moussant" value="{{ reglage.moussant }}"><br>
     <label>Programme :</label> <input type="text" name="programme" value="{{ reglage.programme }}"><br>
-    <label>Godet :</label> <input type="text" name="godet" value="{{ reglage.godet }}"><br>
+    <label for="godet_select">Godet :</label>
+
+    <select id="godet_select">
+        <option value="">---</option>
+
+        {% for g in godets %}
+            <option value="{{ g.valeur }}"
+                {% if reglage.godet and reglage.godet.valeur == g.valeur %}
+                    selected
+                {% endif %}>
+                {{ g.valeur }}
+            </option>
+        {% endfor %}
+
+        <option value="_new">➕ Nouveau…</option>
+    </select>
+
+    <input type="text"
+        id="godet_input"
+        name="godet"
+        placeholder="Nouveau godet"
+        style="display:none; margin-top:5px;">
     <label>Volume démarrage :</label> <input type="text" name="volume_demarrage" value="{{ reglage.volume_demarrage }}"><br>
     <label>Filtre :</label> <input type="text" name="filtre" value="{{ reglage.filtre }}"><br>
 

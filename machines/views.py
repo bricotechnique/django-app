@@ -2,6 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
 from .models import ReglageEKO
 from django.contrib.auth.decorators import login_required
+from machines.models import ReglageEKO, Godet
 
 from django.contrib.auth.decorators import permission_required
 
@@ -20,6 +21,18 @@ def delete_reglage(request, reglage_id):
 # ============================================================
 # 1 — PAGE RECHERCHE
 # ============================================================
+
+
+
+@login_required
+@permission_required("machines.add_reglageeko", raise_exception=True)
+def create_reglage(request):
+    reglage = ReglageEKO.objects.create(
+        ref="NOUVEAU",
+        numeros_of=""
+    )
+    return redirect("edit_reglage", reglage_id=reglage.id)
+
 
 @login_required
 def recherche_reglages(request):
@@ -65,9 +78,21 @@ login_required
 
 def edit_reglage(request, reglage_id):
     reglage = get_object_or_404(ReglageEKO, id=reglage_id)
+    ofs = ReglageEKO.objects.all().order_by("numeros_of")
+    godets = Godet.objects.all().order_by("valeur")
 
     if request.method == "POST":
         mode = request.POST.get("mode")
+
+
+
+        godet_value = request.POST.get("godet")
+
+        if godet_value:
+            godet_obj, _ = Godet.objects.get_or_create(valeur=godet_value.strip())
+            reglage.godet = godet_obj
+        else:
+            reglage.godet = None
 
         # Champs simples
         reglage.ref = request.POST.get("ref")
@@ -77,12 +102,20 @@ def edit_reglage(request, reglage_id):
         reglage.volume = request.POST.get("volume")
         reglage.observation = request.POST.get("observation")
 
-        # LIAISONS OF
-        of_prec_id = request.POST.get("of_precedent")
-        reglage.of_precedent = ReglageEKO.objects.filter(id=of_prec_id).first() if of_prec_id else None
+        
+        of_precedent_id = request.POST.get("of_precedent")
+        of_lavage_id = request.POST.get("of_lavage")
 
-        of_lav_id = request.POST.get("of_lavage")
-        reglage.of_lavage = ReglageEKO.objects.filter(id=of_lav_id).first() if of_lav_id else None
+        reglage.of_precedent = (
+            ReglageEKO.objects.filter(id=of_precedent_id).first()
+            if of_precedent_id else None
+        )
+
+        reglage.of_lavage = (
+            ReglageEKO.objects.filter(id=of_lavage_id).first()
+            if of_lavage_id else None
+        )
+
 
         # DUPLICATION
         if mode == "duplicate":
@@ -94,10 +127,15 @@ def edit_reglage(request, reglage_id):
         reglage.save()
         return redirect("detail_reglage", reglage_id=reglage_id)
 
+    
     return render(request, "machines/edit_reglage.html", {
-        "reglage": reglage,
-        "reglages": ReglageEKO.objects.all().order_by("numeros_of"),
-    })
+            "reglage": reglage,
+            "godets": godets,  
+            "ofs": ofs,
+        })
+
+
+
 
 
 # ============================================================

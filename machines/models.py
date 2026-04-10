@@ -1,5 +1,6 @@
 from django.db import models
 
+
 class Godet(models.Model):
     valeur = models.CharField(max_length=50, unique=True)
 
@@ -13,7 +14,14 @@ class ReglageEKO(models.Model):
     ref = models.CharField(max_length=200)
     nom_produit = models.CharField(max_length=200, blank=True)
 
-    numeros_of = models.CharField(max_length=100, db_index=True)
+    
+    numeros_of = models.CharField(
+        max_length=100,
+        null=True,       # ✅ OBLIGATOIRE
+        blank=True,      # ✅ OBLIGATOIRE
+        unique=True,
+        db_index=True,
+    )
     numeros_lot = models.CharField(max_length=100, db_index=True)
 
     of_precedent = models.ForeignKey(
@@ -43,7 +51,8 @@ class ReglageEKO(models.Model):
     moussant = models.CharField(max_length=10, blank=True)
     ref_flacon = models.CharField(max_length=100, blank=True)
     programme = models.CharField(max_length=50, blank=True)
-    godet = models.CharField(max_length=50, blank=True)
+
+    godet = models.ForeignKey(Godet, null=True, blank=True, on_delete=models.SET_NULL)
 
     volume = models.FloatField(null=True, blank=True)
     volume_demarrage = models.FloatField(null=True, blank=True)
