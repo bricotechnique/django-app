@@ -40,11 +40,10 @@ class ReglageEKO(models.Model):
     related_name="lavages"
     )
     
-    date_reglage = models.DateTimeField(null=True, blank=True)
+    date_reglage = models.DateField(null=True, blank=True)
 
     regleur = models.CharField(max_length=50, blank=True)
-    observation = models.TextField(blank=True)
-
+    observation = models.CharField(max_length=1000, null=True, blank=True)
     # =====================================================
     # PRODUIT / REMPLISSAGE
     # =====================================================

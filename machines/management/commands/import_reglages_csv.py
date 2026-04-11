@@ -31,15 +31,21 @@ def normalize_of(v):
     )
 
 
+
 def to_date(value):
-    value = clean(value)
+    value = str(value).strip() if value else ""
+
     if not value:
         return None
-    try:
-        a, m, j = value.split("/")
-        return timezone.make_aware(datetime(2000 + int(a), int(m), int(j)))
-    except Exception:
-        return None
+
+    for fmt in ("%Y/%m/%d", "%y/%m/%d"):
+        try:
+            return datetime.strptime(value, fmt).date()
+        except ValueError:
+            pass
+
+    return None
+
 
 
 def to_float(v):

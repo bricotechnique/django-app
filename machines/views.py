@@ -1,10 +1,9 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
 from .models import ReglageEKO
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, permission_required
 from machines.models import ReglageEKO, Godet
 
-from django.contrib.auth.decorators import permission_required
 
 @login_required
 
@@ -55,6 +54,7 @@ def recherche_reglages(request):
     if volume:
         reglages = reglages.filter(volume=volume)
 
+
     return render(request, "machines/recherche_reglages.html", {"reglages": reglages})
 
 
@@ -63,76 +63,84 @@ def recherche_reglages(request):
 # ============================================================
 
 @login_required
+
 def detail_reglage(request, reglage_id):
     reglage = get_object_or_404(ReglageEKO, id=reglage_id)
-    return render(request, "machines/detail_reglage.html", {"reglage": reglage})
+    
+    return render(request, "machines/reglage_gabarit.html", {
+        "reglage": reglage,
+        "mode": "view",  
+    })
 
 
 # ============================================================
 # 3 — PAGE ÉDITION + DUPLICATION
 # ============================================================
-login_required
 
 
+
+
+@login_required
 @permission_required("machines.change_reglageeko", raise_exception=True)
-
 def edit_reglage(request, reglage_id):
     reglage = get_object_or_404(ReglageEKO, id=reglage_id)
-    ofs = ReglageEKO.objects.all().order_by("numeros_of")
+
+    ofs = ReglageEKO.objects.exclude(id=reglage.id).order_by("numeros_of")
     godets = Godet.objects.all().order_by("valeur")
 
+    # ==========================
+    # POST = sauvegarde
+    # ==========================
     if request.method == "POST":
-        mode = request.POST.get("mode")
-
-
-
-        godet_value = request.POST.get("godet")
-
-        if godet_value:
-            godet_obj, _ = Godet.objects.get_or_create(valeur=godet_value.strip())
-            reglage.godet = godet_obj
-        else:
-            reglage.godet = None
 
         # Champs simples
-        reglage.ref = request.POST.get("ref")
-        reglage.nom_produit = request.POST.get("nom_produit")
-        reglage.numeros_of = request.POST.get("numeros_of")
-        reglage.numeros_lot = request.POST.get("numeros_lot")
-        reglage.volume = request.POST.get("volume")
-        reglage.observation = request.POST.get("observation")
+        reglage.ref = request.POST.get("ref", "")
+        reglage.nom_produit = request.POST.get("nom_produit", "")
+        reglage.numeros_lot = request.POST.get("numeros_lot", "")
+        reglage.regleur = request.POST.get("regleur", "")
+        reglage.volume = request.POST.get("volume") or None
+        reglage.observation = request.POST.get("observation", "")
 
-        
+        date_str = request.POST.get("date_reglage")
+
+        if date_str:
+            reglage.date_reglage = date_str   # Django convertit automatiquement YYYY-MM-DD
+        else:
+            reglage.date_reglage = None
+
+        # Godet (FK)
+        godet_id = request.POST.get("godet")
+        reglage.godet = (
+            Godet.objects.filter(id=godet_id).first()
+            if godet_id else None
+        )
+
+        # OF précédent / lavage
         of_precedent_id = request.POST.get("of_precedent")
-        of_lavage_id = request.POST.get("of_lavage")
-
         reglage.of_precedent = (
             ReglageEKO.objects.filter(id=of_precedent_id).first()
             if of_precedent_id else None
         )
 
+        of_lavage_id = request.POST.get("of_lavage")
         reglage.of_lavage = (
             ReglageEKO.objects.filter(id=of_lavage_id).first()
             if of_lavage_id else None
         )
-
-
-        # DUPLICATION
-        if mode == "duplicate":
-            reglage.pk = None
-            reglage.save()
-            return redirect("detail_reglage", reglage_id=reglage.id)
-
-        # ENREGISTRER
+        
         reglage.save()
-        return redirect("detail_reglage", reglage_id=reglage_id)
+        return redirect("detail_reglage", reglage_id=reglage.id)
 
-    
-    return render(request, "machines/edit_reglage.html", {
-            "reglage": reglage,
-            "godets": godets,  
-            "ofs": ofs,
-        })
+    # ==========================
+    # GET = affichage du formulaire
+    # ==========================
+    return render(request, "machines/reglage_gabarit.html", {
+        "reglage": reglage,
+        "mode": "edit",
+        "godets": godets,
+        "ofs": ofs,
+    })
+
 
 
 

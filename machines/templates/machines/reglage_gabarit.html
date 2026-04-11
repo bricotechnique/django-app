@@ -1,0 +1,242 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Réglage {{ reglage.numeros_of }}</title>
+
+    <style>
+        body { font-family: Arial; }
+        h2 { margin-top: 30px; border-bottom: 2px solid #999; padding-bottom: 5px; }
+        table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+        th, td { border: 1px solid #ccc; padding: 6px; }
+        th { background: #eee; }
+
+        input[type="text"], textarea, select {
+            width: 250px;
+            padding: 4px;
+        }
+
+        textarea {
+            resize: vertical;
+        }
+
+        #observation {
+            width: 600px;
+            height: 120px;
+        }
+
+        .btn {
+            padding: 8px 12px;
+            cursor: pointer;
+            margin-right: 8px;
+            border: none;
+        }
+
+        .btn-save { background: #4CAF50; color: white; }
+        .btn-edit { background: #2196F3; color: white; }
+        .btn-cancel { background: #ccc; }
+        .btn-delete { background: #d9534f; color: white; }
+    </style>
+</head>
+
+<body>
+
+<form method="post" action="{% url 'logout' %}" style="display:inline;">
+    {% csrf_token %}
+    <button type="submit">🚪 Déconnexion</button>
+</form>
+
+<a href="{% url 'recherche_reglages' %}">⬅ Retour à la recherche</a>
+
+<h1>Réglage : {{ reglage.numeros_of }} - {{ reglage.numeros_lot }} - {{ reglage.nom_produit }}</h1>
+
+<!-- ========================= -->
+<!-- FORMULAIRE UNIQUE EDIT -->
+<!-- ========================= -->
+{% if mode == "edit" %}
+<form method="post">
+    {% csrf_token %}
+{% endif %}
+
+<!-- ========================= -->
+<!-- BOUTONS -->
+<!-- ========================= -->
+<div style="margin-bottom:20px;">
+
+{% if perms.machines.change_reglageeko %}
+    {% if mode == "edit" %}
+        <a href="{% url 'detail_reglage' reglage.id %}">
+            <button type="button" class="btn btn-cancel">↩ Annuler</button>
+        </a>
+
+        <button type="submit"
+                name="mode"
+                value="update"
+                class="btn btn-save">
+            ✅ Enregistrer
+        </button>
+    {% else %}
+        <a href="{% url 'edit_reglage' reglage.id %}">
+            <button type="button" class="btn btn-edit">✏️ Modifier</button>
+        </a>
+    {% endif %}
+{% endif %}
+
+{% if perms.machines.delete_reglageeko and mode != "edit" %}
+    <a href="/reglage/{{ reglage.id }}/delete/">
+        <button type="button" class="btn btn-delete">❌ Supprimer</button>
+    </a>
+{% endif %}
+
+</div>
+
+
+
+
+<!-- ✅ SECTION : Informations principales -->
+<h2>Informations principales</h2>
+<table>
+    <tr><th>Référence</th>
+        <td>
+        {% if mode == "edit" %}
+        <input type="text"
+                name="ref"
+                value="{{ reglage.ref }}"
+                maxlength="50">
+        {% else %}
+        {{ reglage.ref }}
+        {% endif %}
+        </td>
+    <th>Nom produit</th>
+        <td>
+        {% if mode == "edit" %}
+            <input type="text"
+                name="nom_produit"
+                value="{{ reglage.nom_produit }}"
+                maxlength="50">
+        {% else %}
+            {{ reglage.nom_produit }}
+        {% endif %}
+        </td>
+
+</td></tr>
+    <tr><th>OF</th><td> {% if mode == "edit" %}
+        <input type="text"
+                name="numeros_of"
+                value="{{ reglage.numeros_of }}"
+                maxlength="50">
+        {% else %}
+        {{ reglage.numeros_of }}
+        {% endif %}</td><th>Lot</th>
+        <td>{{ reglage.numeros_lot }}</td></tr>
+    <tr>
+    <th>Date réglage</th>
+    <td>
+    {% if mode == "edit" %}
+        <input type="date"
+               name="date_reglage"
+               value="{{ reglage.date_reglage|date:'Y-m-d' }}">
+    {% else %}
+        {% if reglage.date_reglage %}
+            {{ reglage.date_reglage|date:"l d F Y" }}
+       
+
+        {% else %}
+            —
+        {% endif %}
+    {% endif %}
+    </td>
+
+
+    <th>Volume</th><td>{{ reglage.volume }}</td></tr>
+    <tr><th>Régleurs</th><td>{{ reglage.regleur}}</td></tr>
+    <tr>
+    <th>OF précédent</th>
+    <td>
+        {% if reglage.of_precedent %}
+            <a href="{% url 'detail_reglage' reglage.of_precedent.id %}">
+                {{ reglage.of_precedent.numeros_of }} — {{ reglage.of_precedent.nom_produit }}
+            </a>
+        {% else %}
+            Aucun
+        {% endif %}
+    </td>
+
+    <th>OF lavage</th>
+    <td>
+        {% if reglage.of_lavage %}
+            <a href="{% url 'detail_reglage' reglage.of_lavage.id %}">
+                {{ reglage.of_lavage.numeros_of }} — {{ reglage.of_lavage.nom_produit }}
+            </a>
+        {% else %}
+            Aucun
+        {% endif %}
+    </td>
+</tr>
+</table>
+<!-- ✅ Observations -->
+<h2>Observations</h2>
+<p>{{ reglage.observation }}</p>
+<!-- ✅ SECTION : Remplissage -->
+<h2>Remplissage</h2>
+<table>
+    <tr><th>Moussant</th><td>{{ reglage.moussant }}</td><th>Ref flacon</th><td>{{ reglage.ref_flacon}}</td><th>Programme</th><td>{{ reglage.programme }}</td><th>Godet</th><td>{{ reglage.godet }}</td><th>Volume démarrage</th><td>{{ reglage.volume_demarrage }}</td><th>Filtre</th><td>{{ reglage.filtre }}</td></tr>
+</table>
+
+<!-- ✅ SECTION : Pompes -->
+<h2>Remplissage</h2>
+<table>
+    <tr><th>Type de bec</th><td>{{ reglage.type_bec }}</td></tr>
+    {% if reglage.pompe_1 %}<tr><th>P1</th><td>{{ reglage.pompe_1 }}</td><th>Valeur</th><td>{{ reglage.valeur_1 }}</td><th>Bec</th><td>{{ reglage.tube_bec_1 }}</td><th>centreur</th><td>{{ reglage.centerur_1 }}</td><th>Motorisé</th><td>{{ reglage.motorise_1}}</td></tr>{% endif %}
+    {% if reglage.pompe_2 %}<tr><th>P2</th><td>{{ reglage.pompe_2 }}</td><th>Valeur</th><td>{{ reglage.valeur_2 }}</td><th>Bec</th><td>{{ reglage.tube_bec_2 }}</td><th>centreur</th><td>{{ reglage.centerur_2 }}</td><th>Motorisé</th><td>{{ reglage.motorise_2}}</td></tr>{% endif %}
+    {% if reglage.pompe_3 %}<tr><th>P3</th><td>{{ reglage.pompe_3 }}</td><th>Valeur</th><td>{{ reglage.valeur_3 }}</td><th>Bec</th><td>{{ reglage.tube_bec_3 }}</td><th>centreur</th><td>{{ reglage.centerur_3 }}</td><th>Motorisé</th><td>{{ reglage.motorise_3}}</td></tr>{% endif %}
+    {% if reglage.pompe_4 %}<tr><th>P4</th><td>{{ reglage.pompe_4 }}</td><th>Valeur</th><td>{{ reglage.valeur_4 }}</td><th>Bec</th><td>{{ reglage.tube_bec_4 }}</td><th>centreur</th><td>{{ reglage.centerur_4 }}</td></tr>{% endif %}
+</table>
+
+<!-- ✅ SECTION : Hauteurs -->
+<h2>Hauteurs</h2>
+<table>
+    <tr><th>H machine</th><td>{{ reglage.h_machine }}</td></tr>
+    <tr><th>Contrôle jus H</th><td>{{ reglage.ctrl_jus_h }}</td><th>Contrôle jus prof</th><td>{{ reglage.ctrl_jus_prof }}</td></tr>
+    <tr><th>Contrôle ultra</th><td>{{ reglage.ctrl_ultra }}</td><th>H compo 1</th><td>{{ reglage.h_compo_1 }}</td><th> compo 2</th><td>{{ reglage.h_compo_2 }}</td></tr>
+</table>
+
+<!-- ✅ SECTION : Marteau / Visseuse / Pince -->
+<h2>Visseuse</h2>
+<table>
+    <tr><th>Présence visseuse</th><td>{{ reglage.presence_visseuse }}</td></tr>
+    {% if reglage.presence_visseuse == "Vrai" %}
+    <tr><th>Couple vis</th><td>{{ reglage.couple_vis }}</td><th>Butée vis</th><td>{{ reglage.butee_vis }}</td><th>Pince vis</th><td>{{ reglage.pince_vis }}</td></tr>
+    <tr><th>H pince ext</th><td>{{ reglage.h_pince_ext }}</td><th>H pince int</th><td>{{ reglage.h_pince_int }}</td><th>Pince flacon</th><td>{{ reglage.type_pince_int }}</td></tr>
+    {% endif %}
+</table>
+
+<!-- ✅ SECTION : Cueilleur -->
+<h2>Cueilleur</h2>
+<table>
+    <tr><th>Présence</th><td>{{ reglage.presence_cueilleur }}</td></tr>
+     {% if reglage.presence_cueilleur == "Vrai" %}
+    <tr><th>Cueilleur</th><td>{{ reglage.cueilleur }}</td></tr>
+    <tr><th>Cueilleur 1</th><td>{{ reglage.cueilleur_1 }}</td></tr>
+    <tr><th>Cueilleur 2</th><td>{{ reglage.cueilleur_2 }}</td></tr>
+    <tr><th>Cueilleur 3</th><td>{{ reglage.cueilleur_3 }}</td></tr>
+     {% endif %}
+</table>
+
+<!-- ✅ SECTION : VRAC -->
+<h2>Vrac</h2>
+<table>
+    <tr><th>Ref</th><td>{{ reglage.vrac }}</td><th>Type</th><td>{{ reglage.vrac_type }}</td></tr>
+    <tr><th>Commentaire</th><td>{{ reglage.vrac_commentaire }}</td></tr>
+    <tr><th>Pompe vrac</th><td>{{ reglage.vrac_pompe }}</td><th>Etuve</th><td>{{ reglage.vrac_etuve }}</td><th>T° ambiante</th><td>{{ reglage.vrac_temperature }}</td></tr>
+    <tr><th>Circuit fermé microbio</th><td>{{ reglage.vrac_circuit_ferme_microbio }}</td><th>Validation labo</th><td>{{ reglage.vrac_labo_validation }}</td><th>Validation microbio</th><td>{{ reglage.vrac_microbio_validation }}</td></tr>
+</table>
+
+
+{% if mode == "edit" %}
+</form>
+{% endif %}
+
+</body>
+</html>
