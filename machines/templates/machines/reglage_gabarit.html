@@ -1,548 +1,849 @@
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <title>Réglage {{ reglage.numeros_of|default:"(sans OF)" }}</title>
+  <meta charset="UTF-8">
+  <title>Réglage {{ reglage.numeros_of|default:"(sans OF)" }}</title>
 
-    <style>
-        body { font-family: Arial; }
-        h2 { margin-top: 30px; border-bottom: 2px solid #999; padding-bottom: 5px; }
-        table { border-collapse: collapse; width: 100%; margin-top: 10px; }
-        th, td { border: 1px solid #ccc; padding: 6px; vertical-align: top; }
-        th { background: #eee; }
+  <style>
+    body { font-family: Arial; }
+    h2 { margin-top: 30px; border-bottom: 2px solid #999; padding-bottom: 5px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+    th, td { border: 1px solid #ccc; padding: 6px; vertical-align: top; }
+    th { background: #eee; }
 
-        input[type="text"], textarea, select {
-            width: 220px;
-            padding: 4px;
-        }
+    input[type="text"], textarea, select { width: 220px; padding: 4px; }
+    textarea { resize: vertical; }
 
-        textarea { resize: vertical; }
+    #observation { width: 100%; max-width: 1000px; height: 120px; }
 
-        #observation {
-            width: 100%;
-            max-width: 1000px;
-            height: 120px;
-        }
+    .btn { padding: 8px 12px; cursor: pointer; margin-right: 8px; border: none; }
+    .btn-save { background: #4CAF50; color: white; }
+    .btn-edit { background: #2196F3; color: white; }
+    .btn-cancel { background: #ccc; }
+    .btn-delete { background: #d9534f; color: white; }
+    .btn-small { padding: 6px 10px; font-size: 13px; }
 
-        .btn {
-            padding: 8px 12px;
-            cursor: pointer;
-            margin-right: 8px;
-            border: none;
-        }
-        .btn-save { background: #4CAF50; color: white; }
-        .btn-edit { background: #2196F3; color: white; }
-        .btn-cancel { background: #ccc; }
-        .btn-delete { background: #d9534f; color: white; }
-        .btn-small { padding: 6px 10px; font-size: 13px; }
-
-        .inline-help { color: #666; font-size: 12px; margin-top: 4px; }
-
-        /* Petits inputs dans le tableau pompes */
-        .small-input { width: 120px; }
-        .wide-select { width: 240px; }
-
-        /* Affichage “—” */
-        .dash { color: #888; }
-    </style>
+    .dash { color: #888; }
+    .small-input { width: 120px; }
+    .wide-select { width: 260px; }
+  </style>
 </head>
 
 <body>
 
-<!-- ========================= -->
-<!-- LOGOUT (form séparé) -->
-<!-- ========================= -->
+<!-- LOGOUT (form séparé, jamais imbriqué) -->
 <form method="post" action="{% url 'logout' %}" style="display:inline;">
-    {% csrf_token %}
-    <button type="submit" class="btn btn-small">🚪 Déconnexion</button>
+  {% csrf_token %}
+  <button type="submit" class="btn btn-small">🚪 Déconnexion</button>
 </form>
 
 <a href="{% url 'recherche_reglages' %}">⬅ Retour à la recherche</a>
 
 <h1>
-    Réglage :
-    {{ reglage.numeros_of|default:"(sans OF)" }}
-    - {{ reglage.numeros_lot|default:"(sans lot)" }}
-    - {{ reglage.nom_produit|default:"(sans nom)" }}
+  Réglage :
+  {{ reglage.numeros_of|default:"(sans OF)" }}
+  — {{ reglage.numeros_lot|default:"(sans lot)" }}
+  — {{ reglage.nom_produit|default:"(sans nom)" }}
 </h1>
 
-<!-- ========================= -->
-<!-- FORM UNIQUE SI MODE EDIT -->
-<!-- ========================= -->
 {% if mode == "edit" %}
 <form method="post">
-    {% csrf_token %}
+  {% csrf_token %}
 {% endif %}
 
-<!-- ========================= -->
 <!-- BOUTONS -->
-<!-- ========================= -->
 <div style="margin-bottom:20px;">
-    {% if perms.machines.change_reglageeko %}
-        {% if mode == "edit" %}
-            <a href="{% url 'detail_reglage' reglage.id %}">
-                <button type="button" class="btn btn-cancel">↩ Annuler</button>
-            </a>
-
-            <button type="submit" name="mode" value="update" class="btn btn-save">
-                ✅ Enregistrer
-            </button>
-        {% else %}
-            <a href="{% url 'edit_reglage' reglage.id %}">
-                <button type="button" class="btn btn-edit">✏️ Modifier</button>
-            </a>
-        {% endif %}
+  {% if perms.machines.change_reglageeko %}
+    {% if mode == "edit" %}
+      <a href="{% url 'detail_reglage' reglage.id %}">
+        <button type="button" class="btn btn-cancel">↩ Annuler</button>
+      </a>
+      <button type="submit" name="mode" value="update" class="btn btn-save">✅ Enregistrer</button>
+    {% else %}
+      <a href="{% url 'edit_reglage' reglage.id %}">
+        <button type="button" class="btn btn-edit">✏️ Modifier</button>
+      </a>
     {% endif %}
+  {% endif %}
 
-    {% if perms.machines.delete_reglageeko and mode != "edit" %}
-        <a href="{% url 'delete_reglage' reglage.id %}">
-            <button type="button" class="btn btn-delete">❌ Supprimer</button>
-        </a>
-    {% endif %}
+  {% if perms.machines.delete_reglageeko and mode != "edit" %}
+    <a href="{% url 'delete_reglage' reglage.id %}">
+      <button type="button" class="btn btn-delete">❌ Supprimer</button>
+    </a>
+  {% endif %}
 </div>
 
-<!-- ========================= -->
+<!-- ===================================================== -->
 <!-- INFORMATIONS PRINCIPALES -->
-<!-- ========================= -->
+<!-- ===================================================== -->
 <h2>Informations principales</h2>
-
 <table>
-    <tr>
-        <th>Référence</th>
-        <td>
-            {% if mode == "edit" %}
-                <input type="text" name="ref" value="{{ reglage.ref|default:'' }}" maxlength="50">
-            {% else %}
-                {{ reglage.ref|default:"—" }}
-            {% endif %}
-        </td>
+  <tr>
+    <th>Référence</th>
+    <td>
+      {% if mode == "edit" %}
+        <input type="text" name="ref" value="{{ reglage.ref|default:'' }}" maxlength="50">
+      {% else %}
+        {{ reglage.ref|default:"—" }}
+      {% endif %}
+    </td>
 
-        <th>Nom produit</th>
-        <td>
-            {% if mode == "edit" %}
-                <input type="text" name="nom_produit" value="{{ reglage.nom_produit|default:'' }}" maxlength="100">
-            {% else %}
-                {{ reglage.nom_produit|default:"—" }}
-            {% endif %}
-        </td>
-    </tr>
+    <th>Nom produit</th>
+    <td>
+      {% if mode == "edit" %}
+        <input type="text" name="nom_produit" value="{{ reglage.nom_produit|default:'' }}" maxlength="120">
+      {% else %}
+        {{ reglage.nom_produit|default:"—" }}
+      {% endif %}
+    </td>
+  </tr>
 
-    <tr>
-        <th>OF</th>
-        <td>
-            <!-- OF généralement non modifiable : on l’affiche -->
-            {{ reglage.numeros_of|default:"—" }}
-        </td>
+  <tr>
+    <th>OF</th>
+    <td>{{ reglage.numeros_of|default:"—" }}</td>
 
-        <th>Lot</th>
-        <td>
-            {% if mode == "edit" %}
-                <input type="text" name="numeros_lot" value="{{ reglage.numeros_lot|default:'' }}" maxlength="100">
-            {% else %}
-                {{ reglage.numeros_lot|default:"—" }}
-            {% endif %}
-        </td>
-    </tr>
+    <th>Lot</th>
+    <td>
+      {% if mode == "edit" %}
+        <input type="text" name="numeros_lot" value="{{ reglage.numeros_lot|default:'' }}" maxlength="120">
+      {% else %}
+        {{ reglage.numeros_lot|default:"—" }}
+      {% endif %}
+    </td>
+  </tr>
 
-    <tr>
-        <th>Date réglage</th>
-        <td>
-            {% if mode == "edit" %}
-                <input type="date" name="date_reglage" value="{{ reglage.date_reglage|date:'Y-m-d' }}">
-            {% else %}
-                {% if reglage.date_reglage %}
-                    {{ reglage.date_reglage|date:"l d F Y" }}
-                {% else %}
-                    <span class="dash">—</span>
-                {% endif %}
-            {% endif %}
-        </td>
+  <tr>
+    <th>Date réglage</th>
+    <td>
+      {% if mode == "edit" %}
+        <input type="date" name="date_reglage" value="{{ reglage.date_reglage|date:'Y-m-d' }}">
+      {% else %}
+        {% if reglage.date_reglage %}
+          {{ reglage.date_reglage|date:"l d F Y" }}
+        {% else %}
+          <span class="dash">—</span>
+        {% endif %}
+      {% endif %}
+    </td>
 
-        <th>Volume</th>
-        <td>
-            {% if mode == "edit" %}
-                <input type="text" name="volume" value="{{ reglage.volume|floatformat:'g' }}" class="small-input">
-            {% else %}
-                {% if reglage.volume != None %}
-                    {{ reglage.volume|floatformat:'g' }}
-                {% else %}
-                    <span class="dash">—</span>
-                {% endif %}
-            {% endif %}
-        </td>
-    </tr>
+    <th>Volume</th>
+    <td>
+      {% if mode == "edit" %}
+        <input type="text" class="small-input" name="volume" value="{{ reglage.volume|floatformat:'g' }}">
+      {% else %}
+        {% if reglage.volume != None %}{{ reglage.volume|floatformat:'g' }}{% else %}<span class="dash">—</span>{% endif %}
+      {% endif %}
+    </td>
+  </tr>
 
-    <tr>
-        <th>Régleur</th>
-        <td>
-            {% if mode == "edit" %}
-                <input type="text" name="regleur" value="{{ reglage.regleur|default:'' }}" maxlength="100">
-            {% else %}
-                {{ reglage.regleur|default:"—" }}
-            {% endif %}
-        </td>
+  <tr>
+    <th>Régleur</th>
+    <td>
+      {% if mode == "edit" %}
+        <input type="text" name="regleur" value="{{ reglage.regleur|default:'' }}" maxlength="120">
+      {% else %}
+        {{ reglage.regleur|default:"—" }}
+      {% endif %}
+    </td>
 
-        <th>Volume démarrage</th>
-        <td>
-            {% if mode == "edit" %}
-                <input type="text" name="volume_demarrage" value="{{ reglage.volume_demarrage|floatformat:'g' }}" class="small-input">
-            {% else %}
-                {% if reglage.volume_demarrage != None %}
-                    {{ reglage.volume_demarrage|floatformat:'g' }}
-                {% else %}
-                    <span class="dash">—</span>
-                {% endif %}
-            {% endif %}
-        </td>
-    </tr>
+    <th>Volume démarrage</th>
+    <td>
+      {% if mode == "edit" %}
+        <input type="text" class="small-input" name="volume_demarrage" value="{{ reglage.volume_demarrage|floatformat:'g' }}">
+      {% else %}
+        {% if reglage.volume_demarrage != None %}{{ reglage.volume_demarrage|floatformat:'g' }}{% else %}<span class="dash">—</span>{% endif %}
+      {% endif %}
+    </td>
+  </tr>
 
-    <tr>
-        <th>OF précédent</th>
-        <td>
-            {% if mode == "edit" %}
-                <select name="of_precedent" class="wide-select">
-                    <option value="">---</option>
-                    {% for of in ofs %}
-                        <option value="{{ of.id }}"
-                            {% if reglage.of_precedent and reglage.of_precedent.id == of.id %}selected{% endif %}>
-                            {{ of.numeros_of }} — {{ of.nom_produit }}
-                        </option>
-                    {% endfor %}
-                </select>
-            {% else %}
-                {% if reglage.of_precedent %}
-                    <a href="{% url 'detail_reglage' reglage.of_precedent.id %}">
-                        {{ reglage.of_precedent.numeros_of }} — {{ reglage.of_precedent.nom_produit }}
-                    </a>
-                {% else %}
-                    <span class="dash">Aucun</span>
-                {% endif %}
-            {% endif %}
-        </td>
+  <tr>
+    <th>OF précédent</th>
+    <td>
+      {% if mode == "edit" %}
+        <select name="of_precedent" class="wide-select">
+          <option value="">---</option>
+          {% for of in ofs %}
+            <option value="{{ of.id }}" {% if reglage.of_precedent and reglage.of_precedent.id == of.id %}selected{% endif %}>
+              {{ of.numeros_of }} — {{ of.nom_produit }}
+            </option>
+          {% endfor %}
+        </select>
+      {% else %}
+        {% if reglage.of_precedent %}
+          <a href="{% url 'detail_reglage' reglage.of_precedent.id %}">
+            {{ reglage.of_precedent.numeros_of }} — {{ reglage.of_precedent.nom_produit }}
+          </a>
+        {% else %}
+          <span class="dash">Aucun</span>
+        {% endif %}
+      {% endif %}
+    </td>
 
-        <th>OF lavage</th>
-        <td>
-            {% if mode == "edit" %}
-                <select name="of_lavage" class="wide-select">
-                    <option value="">---</option>
-                    {% for of in ofs %}
-                        <option value="{{ of.id }}"
-                            {% if reglage.of_lavage and reglage.of_lavage.id == of.id %}selected{% endif %}>
-                            {{ of.numeros_of }} — {{ of.nom_produit }}
-                        </option>
-                    {% endfor %}
-                </select>
-            {% else %}
-                {% if reglage.of_lavage %}
-                    <a href="{% url 'detail_reglage' reglage.of_lavage.id %}">
-                        {{ reglage.of_lavage.numeros_of }} — {{ reglage.of_lavage.nom_produit }}
-                    </a>
-                {% else %}
-                    <span class="dash">Aucun</span>
-                {% endif %}
-            {% endif %}
-        </td>
-    </tr>
+    <th>OF lavage</th>
+    <td>
+      {% if mode == "edit" %}
+        <select name="of_lavage" class="wide-select">
+          <option value="">---</option>
+          {% for of in ofs %}
+            <option value="{{ of.id }}" {% if reglage.of_lavage and reglage.of_lavage.id == of.id %}selected{% endif %}>
+              {{ of.numeros_of }} — {{ of.nom_produit }}
+            </option>
+          {% endfor %}
+        </select>
+      {% else %}
+        {% if reglage.of_lavage %}
+          <a href="{% url 'detail_reglage' reglage.of_lavage.id %}">
+            {{ reglage.of_lavage.numeros_of }} — {{ reglage.of_lavage.nom_produit }}
+          </a>
+        {% else %}
+          <span class="dash">Aucun</span>
+        {% endif %}
+      {% endif %}
+    </td>
+  </tr>
 </table>
 
-<!-- ========================= -->
+<!-- ===================================================== -->
 <!-- OBSERVATIONS -->
-<!-- ========================= -->
+<!-- ===================================================== -->
 <h2>Observations</h2>
-
 {% if mode == "edit" %}
-    <textarea id="observation" name="observation" maxlength="1000">{{ reglage.observation|default:"" }}</textarea>
-    <div class="inline-help">Texte long autorisé (1000 caractères).</div>
+  <textarea id="observation" name="observation" maxlength="1000">{{ reglage.observation|default:"" }}</textarea>
 {% else %}
-    {% if reglage.observation %}
-        <p style="white-space:pre-line;">{{ reglage.observation }}</p>
-    {% else %}
-        <p class="dash">—</p>
-    {% endif %}
+  {% if reglage.observation %}
+    <p style="white-space:pre-line;">{{ reglage.observation }}</p>
+  {% else %}
+    <p class="dash">—</p>
+  {% endif %}
 {% endif %}
 
-<!-- ========================= -->
+<!-- ===================================================== -->
 <!-- REMPLISSAGE -->
-<!-- ========================= -->
+<!-- ===================================================== -->
 <h2>Remplissage</h2>
-
 <table>
-    <tr>
-        <th>Moussant</th>
-        <td>
-            {% if mode == "edit" %}
-                <input type="text" name="moussant" value="{{ reglage.moussant|default:'' }}" maxlength="50">
-            {% else %}
-                {{ reglage.moussant|default:"—" }}
-            {% endif %}
-        </td>
+  <tr>
+    <th>Moussant</th>
+    <td>
+      {% if mode == "edit" %}
+        <input type="text" name="moussant" value="{{ reglage.moussant|default:'' }}" maxlength="50">
+      {% else %}
+        {{ reglage.moussant|default:"—" }}
+      {% endif %}
+    </td>
 
-        <th>Ref flacon</th>
-        <td>
-            {% if mode == "edit" %}
-                <input type="text" name="ref_flacon" value="{{ reglage.ref_flacon|default:'' }}" maxlength="50">
-            {% else %}
-                {{ reglage.ref_flacon|default:"—" }}
-            {% endif %}
-        </td>
+    <th>Ref flacon</th>
+    <td>
+      {% if mode == "edit" %}
+        <input type="text" name="ref_flacon" value="{{ reglage.ref_flacon|default:'' }}" maxlength="50">
+      {% else %}
+        {{ reglage.ref_flacon|default:"—" }}
+      {% endif %}
+    </td>
 
-        <th>Programme</th>
-        <td>
-            {% if mode == "edit" %}
-                <input type="text" name="programme" value="{{ reglage.programme|default:'' }}" maxlength="50">
-            {% else %}
-                {{ reglage.programme|default:"—" }}
-            {% endif %}
-        </td>
-    </tr>
+    <th>Programme</th>
+    <td>
+      {% if mode == "edit" %}
+        <input type="text" name="programme" value="{{ reglage.programme|default:'' }}" maxlength="50">
+      {% else %}
+        {{ reglage.programme|default:"—" }}
+      {% endif %}
+    </td>
+  </tr>
 
-    <tr>
-        <th>Godet</th>
-        <td>
-            {% if mode == "edit" %}
-                <select name="godet" class="godet-select wide-select">
-                    <option value="">---</option>
+  <tr>
+    <th>Godet</th>
+    <td>
+      {% if mode == "edit" %}
+        <select name="godet" class="godet-select wide-select">
+          <option value="">---</option>
+          {% for g in godets %}
+            <option value="{{ g.id }}" {% if reglage.godet and reglage.godet.id == g.id %}selected{% endif %}>{{ g.valeur }}</option>
+          {% endfor %}
+          <option value="_new">➕ Nouveau…</option>
+        </select>
+        <input type="text" class="godet-input" name="godet_new_value" placeholder="Nouveau godet" style="display:none; margin-top:5px;">
+      {% else %}
+        {% if reglage.godet %}{{ reglage.godet.valeur }}{% else %}<span class="dash">—</span>{% endif %}
+      {% endif %}
+    </td>
 
-                    {% for g in godets %}
-                        <option value="{{ g.id }}"
-                            {% if reglage.godet and reglage.godet.id == g.id %}selected{% endif %}>
-                            {{ g.valeur }}
-                        </option>
-                    {% endfor %}
+    <th>Filtre</th>
+    <td>
+      {% with v=reglage.filtre|stringformat:"s"|lower %}
+      {% if mode == "edit" %}
+        <select name="filtre" style="width:120px;">
+          <option value="False" {% if v == "" or v == "none" or v == "false" or v == "non" %}selected{% endif %}>Non</option>
+          <option value="True"  {% if v == "true" or v == "vrai" or v == "oui" or v == "1" %}selected{% endif %}>Oui</option>
+        </select>
+      {% else %}
+        {% if v == "true" or v == "vrai" or v == "oui" or v == "1" %}✅ Oui{% else %}❌ Non{% endif %}
+      {% endif %}
+      {% endwith %}
+    </td>
 
-                    <option value="_new">➕ Nouveau…</option>
-                </select>
-
-                <input type="text"
-                       class="godet-input"
-                       name="godet_new_value"
-                       placeholder="Nouveau godet"
-                       style="display:none; margin-top:5px;">
-            {% else %}
-                {% if reglage.godet %}
-                    {{ reglage.godet.valeur }}
-                {% else %}
-                    <span class="dash">—</span>
-                {% endif %}
-            {% endif %}
-        </td>
-
-        <th>Filtre</th>
-        <td>
-            {% if mode == "edit" %}
-                {% with v=reglage.filtre|stringformat:"s"|lower %}
-                <select name="filtre" style="width:120px;">
-                    <option value="False" {% if v == "" or v == "none" or v == "false" or v == "non" %}selected{% endif %}>Non</option>
-                    <option value="True"  {% if v == "true" or v == "vrai" or v == "oui" or v == "1" %}selected{% endif %}>Oui</option>
-                </select>
-                {% endwith %}
-            {% else %}
-                {% if reglage.filtre %}
-                    ✅ Oui
-                {% else %}
-                    ❌ Non
-                {% endif %}
-            {% endif %}
-        </td>
-
-        <th>Type de bec</th>
-        <td>
-            {% if mode == "edit" %}
-                <input type="text" name="type_bec" value="{{ reglage.type_bec|default:'' }}" maxlength="50">
-            {% else %}
-                {{ reglage.type_bec|default:"—" }}
-            {% endif %}
-        </td>
-    </tr>
+    <th>Type de bec</th>
+    <td>
+      {% if mode == "edit" %}
+        <input type="text" name="type_bec" value="{{ reglage.type_bec|default:'' }}" maxlength="50">
+      {% else %}
+        {{ reglage.type_bec|default:"—" }}
+      {% endif %}
+    </td>
+  </tr>
 </table>
 
-<!-- ========================= -->
-<!-- POMPES (boucle simplifiée) -->
-<!-- ========================= -->
+<!-- ===================================================== -->
+<!-- POMPES (P1..P4) -->
+<!-- ===================================================== -->
 <h2>Pompes</h2>
-
 <table>
-    {% for p in pompes %}
-    <tr>
-        <th>P{{ p.num }}</th>
+  {% for p in pompes %}
+  <tr>
+    <th>P{{ p.num }}</th>
 
-        <!-- Pompe -->
-        <td>
-            {% if mode == "edit" %}
-                <select name="pompe_{{ p.num }}" style="width:120px;">
-                    <option value=""></option>
-                    <option value="20"  {% if p.pompe == "20" %}selected{% endif %}>20</option>
-                    <option value="60"  {% if p.pompe == "60" %}selected{% endif %}>60</option>
-                    <option value="125" {% if p.pompe == "125" %}selected{% endif %}>125</option>
-                    <option value="250" {% if p.pompe == "250" %}selected{% endif %}>250</option>
-                </select>
-            {% else %}
-                {% if p.pompe %}
-                    {{ p.pompe }}
-                {% else %}
-                    <span class="dash">—</span>
-                {% endif %}
-            {% endif %}
-        </td>
+    <td>
+      {% if mode == "edit" %}
+        <select name="pompe_{{ p.num }}" style="width:120px;">
+          <option value=""></option>
+          <option value="20"  {% if p.pompe == "20" %}selected{% endif %}>20</option>
+          <option value="60"  {% if p.pompe == "60" %}selected{% endif %}>60</option>
+          <option value="125" {% if p.pompe == "125" %}selected{% endif %}>125</option>
+          <option value="250" {% if p.pompe == "250" %}selected{% endif %}>250</option>
+        </select>
+      {% else %}
+        {% if p.pompe %}{{ p.pompe }}{% else %}<span class="dash">—</span>{% endif %}
+      {% endif %}
+    </td>
 
-        <!-- Valeur -->
-        <th>Valeur</th>
-        <td>
-            {% if mode == "edit" %}
-                <input type="text" name="valeur_{{ p.num }}" value="{{ p.valeur|floatformat:'g' }}" class="small-input">
-            {% else %}
-                {% if p.valeur != None %}
-                    {{ p.valeur|floatformat:'g' }}
-                {% else %}
-                    <span class="dash">—</span>
-                {% endif %}
-            {% endif %}
-        </td>
+    <th>Valeur</th>
+    <td>
+      {% if mode == "edit" %}
+        <input type="text" class="small-input" name="valeur_{{ p.num }}" value="{{ p.valeur|floatformat:'g' }}">
+      {% else %}
+        {% if p.valeur != None %}{{ p.valeur|floatformat:'g' }}{% else %}<span class="dash">—</span>{% endif %}
+      {% endif %}
+    </td>
 
-        <!-- Bec (table Bec + Nouveau) -->
-        <th>Bec</th>
-        <td>
-            {% if mode == "edit" %}
-                <select name="tube_bec_{{ p.num }}" class="tube-select wide-select" data-num="{{ p.num }}">
-                    <option value="">---</option>
+    <th>Bec</th>
+    <td>
+      {% if mode == "edit" %}
+        <select name="tube_bec_{{ p.num }}" class="tube-select wide-select" data-num="{{ p.num }}">
+          <option value="">---</option>
+          {% for b in becs %}
+            <option value="{{ b.id }}" {% if p.bec and p.bec.id == b.id %}selected{% endif %}>{{ b.valeur }}</option>
+          {% endfor %}
+          <option value="_new">➕ Nouveau…</option>
+        </select>
+        <input type="text" class="tube-input" data-num="{{ p.num }}" name="tube_bec_{{ p.num }}_new_value"
+               placeholder="Nouveau bec" style="display:none; margin-top:5px;">
+      {% else %}
+        {% if p.bec %}{{ p.bec.valeur }}{% else %}<span class="dash">—</span>{% endif %}
+      {% endif %}
+    </td>
 
-                    {% for b in becs %}
-                        <option value="{{ b.id }}"
-                            {% if p.bec and p.bec.id == b.id %}selected{% endif %}>
-                            {{ b.valeur }}
-                        </option>
-                    {% endfor %}
-
-                    <option value="_new">➕ Nouveau…</option>
-                </select>
-
-                <input type="text"
-                       class="tube-input"
-                       data-num="{{ p.num }}"
-                       name="tube_bec_{{ p.num }}_new_value"
-                       placeholder="Nouveau bec"
-                       style="display:none; margin-top:5px;">
-            {% else %}
-                {% if p.bec %}
-                    {{ p.bec.valeur }}
-                {% else %}
-                    <span class="dash">—</span>
-                {% endif %}
-            {% endif %}
-        </td>
-
-        <!-- Centreur (table Centreur + Nouveau) -->
-        <th>Centreur</th>
-        <td>
-            {% if mode == "edit" %}
-                <select name="centerur_{{ p.num }}" class="centreur-select wide-select" data-num="{{ p.num }}">
-                    <option value="">---</option>
-
-                    {% for c in centreurs %}
-                        <option value="{{ c.id }}"
-                            {% if p.centerur and p.centerur.id == c.id %}selected{% endif %}>
-                            {{ c.valeur }}
-                        </option>
-                    {% endfor %}
-
-                    <option value="_new">➕ Nouveau…</option>
-                </select>
-
-                <input type="text"
-                       class="centreur-input"
-                       data-num="{{ p.num }}"
-                       name="centerur_{{ p.num }}_new_value"
-                       placeholder="Nouveau centreur"
-                       style="display:none; margin-top:5px;">
-            {% else %}
-                {% if p.centerur %}
-                    {{ p.centerur.valeur }}
-                {% else %}
-                    <span class="dash">—</span>
-                {% endif %}
-            {% endif %}
-        </td>
-
-        <!-- Motorisé (uniquement 1..3) -->
+    <th>Centreur</th>
+    <td>
+      {% if mode == "edit" %}
         {% if p.num <= 3 %}
-        <th>Motorisé</th>
-        <td>
-            {% if mode == "edit" %}
-                {% with v=p.motorise|stringformat:"s"|lower %}
-                <select name="motorise_{{ p.num }}" style="width:120px;">
-                    <option value="False" {% if v == "" or v == "none" or v == "false" or v == "non" %}selected{% endif %}>Non</option>
-                    <option value="True"  {% if v == "true" or v == "vrai" or v == "oui" or v == "1" %}selected{% endif %}>Oui</option>
-                </select>
-                {% endwith %}
-            {% else %}
-                {% if p.motorise %}
-                    ✅ Oui
-                {% else %}
-                    ❌ Non
-                {% endif %}
-            {% endif %}
-        </td>
+          <select name="centerur_{{ p.num }}" class="centreur-select wide-select" data-num="{{ p.num }}">
+            <option value="">---</option>
+            {% for c in centreurs %}
+              <option value="{{ c.id }}" {% if p.centerur and p.centerur.id == c.id %}selected{% endif %}>{{ c.valeur }}</option>
+            {% endfor %}
+            <option value="_new">➕ Nouveau…</option>
+          </select>
+          <input type="text" class="centreur-input" data-num="{{ p.num }}" name="centerur_{{ p.num }}_new_value"
+                 placeholder="Nouveau centreur" style="display:none; margin-top:5px;">
+        {% else %}
+          <!-- centerur_4 est texte dans ton modèle actuel -->
+          <input type="text" name="centerur_4" value="{{ reglage.centerur_4|default:'' }}" maxlength="50">
         {% endif %}
-    </tr>
-    {% endfor %}
+      {% else %}
+        {% if p.centerur %}
+          {% if p.num <= 3 %}{{ p.centerur.valeur }}{% else %}{{ p.centerur }}{% endif %}
+        {% else %}
+          <span class="dash">—</span>
+        {% endif %}
+      {% endif %}
+    </td>
+
+    {% if p.num <= 3 %}
+      <th>Motorisé</th>
+      <td>
+        {% if mode == "edit" %}
+          {% with v=p.motorise|stringformat:"s"|lower %}
+          <select name="motorise_{{ p.num }}" style="width:120px;">
+            <option value="False" {% if v == "" or v == "none" or v == "false" or v == "non" or v == "0" %}selected{% endif %}>Non</option>
+            <option value="True"  {% if v == "true" or v == "vrai" or v == "oui" or v == "1" %}selected{% endif %}>Oui</option>
+          </select>
+          {% endwith %}
+        {% else %}
+          {% with v=p.motorise|stringformat:"s"|lower %}
+            {% if v == "true" or v == "vrai" or v == "oui" or v == "1" %}✅ Oui{% else %}❌ Non{% endif %}
+          {% endwith %}
+        {% endif %}
+      </td>
+    {% endif %}
+  </tr>
+  {% endfor %}
 </table>
 
-<!-- ========================= -->
-<!-- FIN FORM -->
-<!-- ========================= -->
+<!-- ===================================================== -->
+<!-- HAUTEURS / CONTROLES -->
+<!-- ===================================================== -->
+<h2>Hauteurs et capteur</h2>
+<table>
+  <tr>
+    <th>H machine</th>
+    <td>
+      {% if mode == "edit" %}
+        <input type="text" class="small-input" name="h_machine" value="{{ reglage.h_machine|floatformat:'g' }}">
+      {% else %}
+        {% if reglage.h_machine != None %}{{ reglage.h_machine|floatformat:'g' }}{% else %}<span class="dash">—</span>{% endif %}
+      {% endif %}
+    </td>
+
+    <th>Ctrl jus H</th>
+    <td>
+      {% if mode == "edit" %}
+        <input type="text" name="ctrl_jus_h" value="{{ reglage.ctrl_jus_h|default:'' }}" maxlength="50">
+      {% else %}
+        {{ reglage.ctrl_jus_h|default:"—" }}
+      {% endif %}
+    </td>
+
+    <th>Ctrl jus prof</th>
+    <td>
+      {% if mode == "edit" %}
+        <input type="text" name="ctrl_jus_prof" value="{{ reglage.ctrl_jus_prof|default:'' }}" maxlength="50">
+      {% else %}
+        {{ reglage.ctrl_jus_prof|default:"—" }}
+      {% endif %}
+    </td>
+  </tr>
+
+  <tr>
+    <th>Ctrl ultra</th>
+    <td>
+      {% if mode == "edit" %}
+        <input type="text" name="ctrl_ultra" value="{{ reglage.ctrl_ultra|default:'' }}" maxlength="50">
+      {% else %}
+        {{ reglage.ctrl_ultra|default:"—" }}
+      {% endif %}
+    </td>
+    <th></th><td class="dash">—</td>
+    <th></th><td class="dash">—</td>
+  </tr>
+</table>
+
+<!-- Poste 1 -->
+<h2>Poste 1</h2>
+<table>
+  <tr>
+    <th>Compo 1</th>
+    <td>
+      {% if mode == "edit" %}
+        <input type="text" name="h_compo_1" value="{{ reglage.h_compo_1|floatformat:'g' }}" maxlength="50">
+      {% else %}
+        {% if reglage.h_compo_1 != None %}{{ reglage.h_compo_1|floatformat:'g' }}{% else %}_ {% endif %}
+      {% endif %}
+    </td>
+
+    <th>Marteau</th>
+    <td>
+      {% with v=reglage.presence_marteau|stringformat:"s"|lower %}
+      {% if mode == "edit" %}
+        <select name="presence_marteau" style="width:120px;">
+          <option value="False" {% if v == "" or v == "none" or v == "false" or v == "non" %}selected{% endif %}>Non</option>
+          <option value="True"  {% if v == "true" or v == "vrai" or v == "oui" or v == "1" %}selected{% endif %}>Oui</option>
+        </select>
+      {% else %}
+        {% if v == "true" or v == "vrai" or v == "oui" or v == "1" %}✅ Oui{% else %}❌ Non{% endif %}
+      {% endif %}
+      {% endwith %}
+    </td>
+
+    <th>H marteau</th>
+    <td>
+      {% if mode == "edit" %}
+        <input type="text" name="h_marteau" value="{{ reglage.h_marteau|floatformat:'g' }}" maxlength="50">
+      {% else %}
+        {% if reglage.h_marteau != None %}{{ reglage.h_marteau|floatformat:'g' }}{% else %}_ {% endif %}
+      {% endif %}
+    </td>
+  </tr>
+</table>
+
+<!-- ===================================================== -->
+<!-- POSTE 2 : VISSEUSE / BUTEE / PINCES -->
+<!-- ===================================================== -->
+<h2>Poste 2</h2>
+<table>
+  <tr>
+    <th>Compo 2</th>
+    <td>
+      {% if mode == "edit" %}
+        <input type="text" name="h_compo_2" value="{{ reglage.h_compo_2|floatformat:'g' }}" maxlength="50">
+      {% else %}
+        {% if reglage.h_compo_2 != None %}{{ reglage.h_compo_2|floatformat:'g' }}{% else %}—{% endif %}
+      {% endif %}
+    </td>
+</tr>
+<tr>
+    <th>Visseuse</th>
+    <td>
+      {% with v=reglage.presence_visseuse|stringformat:"s"|lower %}
+      {% if mode == "edit" %}
+        <select name="presence_visseuse" style="width:120px;">
+          <option value="False" {% if v == "" or v == "none" or v == "false" or v == "non" %}selected{% endif %}>Non</option>
+          <option value="True"  {% if v == "true" or v == "vrai" or v == "oui" or v == "1" %}selected{% endif %}>Oui</option>
+        </select>
+      {% else %}
+        {% if v == "true" or v == "vrai" or v == "oui" or v == "1" %}✅ Oui{% else %}❌ Non{% endif %}
+      {% endif %}
+      {% endwith %}
+    </td>
+
+    <th>Couple vis</th>
+    <td>
+      {% if mode == "edit" %}
+        <input type="text" class="small-input" name="couple_vis" value="{{ reglage.couple_vis|floatformat:'g' }}">
+      {% else %}
+        {% if reglage.couple_vis != None %}{{ reglage.couple_vis|floatformat:'g' }}{% else %}<span class="dash">—</span>{% endif %}
+      {% endif %}
+    </td>
+
+    <th>Butée vis</th>
+    <td>
+      {% if mode == "edit" %}
+        <select name="butee_vis" class="butee-select wide-select">
+          <option value="">---</option>
+          {% for b in butes %}
+            <option value="{{ b.id }}" {% if reglage.butee_vis and reglage.butee_vis.id == b.id %}selected{% endif %}>
+              {{ b.valeur }}
+            </option>
+          {% endfor %}
+          <option value="_new">➕ Nouveau…</option>
+        </select>
+        <input type="text" class="butee-input" name="butee_vis_new_value"
+               placeholder="Nouvelle butée" style="display:none; margin-top:5px;">
+      {% else %}
+        {% if reglage.butee_vis %}{{ reglage.butee_vis.valeur }}{% else %}<span class="dash">—</span>{% endif %}
+      {% endif %}
+    </td>
+
+    <!-- ✅ AJOUT COMPLET : Pince vis -->
+    <th>Pince vis</th>
+    <td>
+      {% if mode == "edit" %}
+        <select name="pince_vis" class="pince-vis-select wide-select">
+          <option value="">---</option>
+          {% for pz in pinces %}
+            <option value="{{ pz.id }}" {% if reglage.pince_vis and reglage.pince_vis.id == pz.id %}selected{% endif %}>
+              {{ pz.valeur }}
+            </option>
+          {% endfor %}
+          <option value="_new">➕ Nouveau…</option>
+        </select>
+        <input type="text" class="pince-vis-input" name="pince_vis_new_value"
+               placeholder="Nouvelle pince vis" style="display:none; margin-top:5px;">
+      {% else %}
+        {% if reglage.pince_vis %}{{ reglage.pince_vis.valeur }}{% else %}<span class="dash">—</span>{% endif %}
+      {% endif %}
+    </td>
+  </tr>
+
+  <tr>
+    <th>Pince flacon</th>
+    <td>
+      {% if mode == "edit" %}
+        <select name="pince_f" class="pincef-select wide-select">
+          <option value="">---</option>
+          {% for pf in pincesf %}
+            <option value="{{ pf.id }}" {% if reglage.pince_f and reglage.pince_f.id == pf.id %}selected{% endif %}>
+              {{ pf.valeur }}
+            </option>
+          {% endfor %}
+          <option value="_new">➕ Nouveau…</option>
+        </select>
+        <input type="text" class="pincef-input" name="pince_f_new_value"
+               placeholder="Nouvelle pince flacon" style="display:none; margin-top:5px;">
+      {% else %}
+        {% if reglage.pince_f %}{{ reglage.pince_f.valeur }}{% else %}<span class="dash">—</span>{% endif %}
+      {% endif %}
+      </td>
+    <th>H pince ext</th>
+    <td>
+      {% if mode == "edit" %}
+        <input type="text" class="small-input" name="h_pince_ext" value="{{ reglage.h_pince_ext|floatformat:'g' }}">
+      {% else %}
+        {% if reglage.h_pince_ext != None %}{{ reglage.h_pince_ext|floatformat:'g' }}{% else %}<span class="dash">—</span>{% endif %}
+      {% endif %}
+    </td>
+
+    <th>H pince int</th>
+    <td>
+      {% if mode == "edit" %}
+        <input type="text" class="small-input" name="h_pince_int" value="{{ reglage.h_pince_int|floatformat:'g' }}">
+      {% else %}
+        {% if reglage.h_pince_int != None %}{{ reglage.h_pince_int|floatformat:'g' }}{% else %}<span class="dash">—</span>{% endif %}
+      {% endif %}
+    </td>
+
+
+
+
+    
+    </td>
+  </tr>
+</table>
+
+<!-- ===================================================== -->
+<!-- CUEILLEUR -->
+<!-- ===================================================== -->
+<h2>Cueilleur</h2>
+<table>
+  <tr>
+    
+    <th>Cueilleur</th>
+<td>
+  {% with v=reglage.cueilleur|stringformat:"s"|lower %}
+  {% if mode == "edit" %}
+    <select name="cueilleur" style="width:120px;">
+      <option value="False" {% if v == "" or v == "none" or v == "false" or v == "non" or v == "0" %}selected{% endif %}>Non</option>
+      <option value="True"  {% if v == "true" or v == "vrai" or v == "oui" or v == "1" %}selected{% endif %}>Oui</option>
+    </select>
+  {% else %}
+    {% if v == "true" or v == "vrai" or v == "oui" or v == "1" %}✅ Oui{% else %}❌ Non{% endif %}
+  {% endif %}
+  {% endwith %}
+</td>
+
+    <th>Cueilleur 1</th>
+    <td>
+      {% if mode == "edit" %}
+        <input type="text" name="cueilleur_1" value="{{ reglage.cueilleur_1|default:'' }}" maxlength="50">
+      {% else %}
+        {{ reglage.cueilleur_1|default:"—" }}
+      {% endif %}
+    </td>
+
+    <th>Cueilleur 2</th>
+    <td>
+      {% if mode == "edit" %}
+        <input type="text" name="cueilleur_2" value="{{ reglage.cueilleur_2|default:'' }}" maxlength="50">
+      {% else %}
+        {{ reglage.cueilleur_2|default:"—" }}
+      {% endif %}
+    </td>
+  </tr>
+
+  <tr>
+    <th>Cueilleur 3</th>
+    <td>
+      {% if mode == "edit" %}
+        <input type="text" name="cueilleur_3" value="{{ reglage.cueilleur_3|default:'' }}" maxlength="50">
+      {% else %}
+        {{ reglage.cueilleur_3|default:"—" }}
+      {% endif %}
+    </td>
+
+  </tr>
+</table>
+
+<!-- ===================================================== -->
+<!-- VRAC -->
+<!-- ===================================================== -->
+<h2>Vrac</h2>
+<table>
+  <tr>
+    <th>Vrac</th>
+    <td>
+      {% if mode == "edit" %}
+        <input type="text" name="vrac" value="{{ reglage.vrac|default:'' }}" maxlength="80">
+      {% else %}
+        {{ reglage.vrac|default:"—" }}
+      {% endif %}
+    </td>
+
+    <th>Type vrac</th>
+    <td>
+      {% if mode == "edit" %}
+        <input type="text" name="vrac_type" value="{{ reglage.vrac_type|default:'' }}" maxlength="80">
+      {% else %}
+        {{ reglage.vrac_type|default:"—" }}
+      {% endif %}
+    </td>
+
+    <th>Pompe vrac</th>
+    <td>
+      {% if mode == "edit" %}
+        <input type="text" name="vrac_pompe" value="{{ reglage.vrac_pompe|default:'' }}" maxlength="80">
+      {% else %}
+        {{ reglage.vrac_pompe|default:"—" }}
+      {% endif %}
+    </td>
+
+    <th>Etuve</th>
+    <td>
+      {% if mode == "edit" %}
+        <input type="text" name="vrac_etuve" value="{{ reglage.vrac_etuve|default:'' }}" maxlength="80">
+      {% else %}
+        {{ reglage.vrac_etuve|default:"—" }}
+      {% endif %}
+    </td>
+  </tr>
+
+  <tr>
+    <th>T°C ambiante</th>
+    <td>
+      {% if mode == "edit" %}
+        <input type="text" name="vrac_temperature" value="{{ reglage.vrac_temperature|default:'' }}" maxlength="50">
+      {% else %}
+        {{ reglage.vrac_temperature|default:"—" }}
+      {% endif %}
+    </td>
+
+    <th>Rincage Eko</th>
+    <td>
+      {% if mode == "edit" %}
+        <input type="text" name="vrac_rincage_eko" value="{{ reglage.vrac_rincage_eko|default:'' }}" maxlength="50">
+      {% else %}
+        {{ reglage.vrac_rincage_eko|default:"—" }}
+      {% endif %}
+    </td>
+
+    <th>Circuit fermé microbio</th>
+    <td>
+      {% if mode == "edit" %}
+        <input type="text" name="vrac_circuit_ferme_microbio" value="{{ reglage.vrac_circuit_ferme_microbio|default:'' }}" maxlength="50">
+      {% else %}
+        {{ reglage.vrac_circuit_ferme_microbio|default:"—" }}
+      {% endif %}
+    </td>
+
+    <th>Commentaire</th>
+    <td>
+      {% if mode == "edit" %}
+        <input type="text" name="vrac_commentaire" value="{{ reglage.vrac_commentaire|default:'' }}" maxlength="200">
+      {% else %}
+        {{ reglage.vrac_commentaire|default:"—" }}
+      {% endif %}
+    </td>
+  </tr>
+
+  <tr>
+    <th>Validation labo</th>
+    <td>
+      {% if mode == "edit" %}
+        <input type="text" name="vrac_labo_validation" value="{{ reglage.vrac_labo_validation|default:'' }}" maxlength="50">
+      {% else %}
+        {{ reglage.vrac_labo_validation|default:"—" }}
+      {% endif %}
+    </td>
+
+    <th>Validation microbio</th>
+    <td>
+      {% if mode == "edit" %}
+        <input type="text" name="vrac_microbio_validation" value="{{ reglage.vrac_microbio_validation|default:'' }}" maxlength="50">
+      {% else %}
+        {{ reglage.vrac_microbio_validation|default:"—" }}
+      {% endif %}
+    </td>
+
+    <th></th><td class="dash">—</td>
+    <th></th><td class="dash">—</td>
+  </tr>
+</table>
+
 {% if mode == "edit" %}
 </form>
 {% endif %}
 
-<!-- ========================= -->
+<!-- ===================================================== -->
 <!-- JS GLOBAL : affiche input si _new -->
-<!-- ========================= -->
+<!-- ===================================================== -->
 <script>
 document.addEventListener("DOMContentLoaded", () => {
 
-  // GODet
+  // Godet (un seul input)
   document.querySelectorAll(".godet-select").forEach(sel => {
     const input = document.querySelector(".godet-input");
     if (!input) return;
-
     const toggle = () => {
       input.style.display = (sel.value === "_new") ? "block" : "none";
       input.required = (sel.value === "_new");
       if (sel.value !== "_new") input.value = "";
     };
-
     sel.addEventListener("change", toggle);
     toggle();
   });
 
-  // TUBES (becs) - un input par pompe via data-num
+  // Bec : un input par pompe via data-num
   document.querySelectorAll(".tube-select").forEach(sel => {
     const num = sel.dataset.num;
     const input = document.querySelector(`.tube-input[data-num="${num}"]`);
     if (!input) return;
-
     const toggle = () => {
       input.style.display = (sel.value === "_new") ? "block" : "none";
       input.required = (sel.value === "_new");
       if (sel.value !== "_new") input.value = "";
     };
-
     sel.addEventListener("change", toggle);
     toggle();
   });
 
-  // CENTREURS - un input par pompe via data-num
+  // Centreur : un input par pompe via data-num (pompes 1..3)
   document.querySelectorAll(".centreur-select").forEach(sel => {
     const num = sel.dataset.num;
     const input = document.querySelector(`.centreur-input[data-num="${num}"]`);
     if (!input) return;
-
     const toggle = () => {
       input.style.display = (sel.value === "_new") ? "block" : "none";
       input.required = (sel.value === "_new");
       if (sel.value !== "_new") input.value = "";
     };
+    sel.addEventListener("change", toggle);
+    toggle();
+  });
 
+  // Butée vis (un seul input)
+  document.querySelectorAll(".butee-select").forEach(sel => {
+    const input = document.querySelector(".butee-input");
+    if (!input) return;
+    const toggle = () => {
+      input.style.display = (sel.value === "_new") ? "block" : "none";
+      input.required = (sel.value === "_new");
+      if (sel.value !== "_new") input.value = "";
+    };
+    sel.addEventListener("change", toggle);
+    toggle();
+  });
+
+  // ✅ Pince vis (un seul input)
+  document.querySelectorAll(".pince-vis-select").forEach(sel => {
+    const input = document.querySelector(".pince-vis-input");
+    if (!input) return;
+    const toggle = () => {
+      input.style.display = (sel.value === "_new") ? "block" : "none";
+      input.required = (sel.value === "_new");
+      if (sel.value !== "_new") input.value = "";
+    };
+    sel.addEventListener("change", toggle);
+    toggle();
+  });
+
+  // ✅ Pince flacon (un seul input)
+  document.querySelectorAll(".pincef-select").forEach(sel => {
+    const input = document.querySelector(".pincef-input");
+    if (!input) return;
+    const toggle = () => {
+      input.style.display = (sel.value === "_new") ? "block" : "none";
+      input.required = (sel.value === "_new");
+      if (sel.value !== "_new") input.value = "";
+    };
     sel.addEventListener("change", toggle);
     toggle();
   });

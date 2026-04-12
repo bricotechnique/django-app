@@ -7,6 +7,25 @@ class Bec(models.Model):
     def __str__(self):
         return self.valeur
 
+class Bute(models.Model):
+    valeur = models.CharField(max_length=50, unique=True)
+
+    def __str__(self):
+        return self.valeur
+
+class Pince(models.Model):
+    valeur = models.CharField(max_length=50, unique=True)
+
+    def __str__(self):
+        return self.valeur
+    
+
+class PinceF(models.Model):
+    valeur = models.CharField(max_length=50, unique=True)
+
+    def __str__(self):
+        return self.valeur
+    
 
 class Centreur(models.Model):
     valeur = models.CharField(max_length=50, unique=True)
@@ -66,6 +85,14 @@ class ReglageEKO(models.Model):
 
     godet = models.ForeignKey(Godet, null=True, blank=True, on_delete=models.SET_NULL)
 
+    butee_vis = models.ForeignKey(Bute, null=True, blank=True, on_delete=models.SET_NULL)
+
+    
+    pince_vis = models.ForeignKey(Pince, null=True, blank=True, on_delete=models.SET_NULL)
+
+    pince_f = models.ForeignKey(PinceF, null=True, blank=True, on_delete=models.SET_NULL)
+
+
     volume = models.FloatField(null=True, blank=True)
     volume_demarrage = models.FloatField(null=True, blank=True)
 
@@ -108,7 +135,7 @@ class ReglageEKO(models.Model):
     valeur_4 = models.FloatField(null=True, blank=True)
     bute_bec_4 = models.CharField(max_length=50, null=True, blank=True)
     tube_bec_4 = models.ForeignKey(Bec, null=True, blank=True, on_delete=models.SET_NULL, related_name="tubes_bec_p4")
-    centerur_4 = models.CharField(max_length=50, null=True, blank=True)
+    centerur_4 = models.ForeignKey(Centreur, null=True, blank=True, on_delete=models.SET_NULL, related_name="p4")
 
     # =====================================================
     # BEC / HAUTEURS / CONTROLES
@@ -129,14 +156,9 @@ class ReglageEKO(models.Model):
 
     presence_visseuse = models.CharField(max_length=10, blank=True)
     couple_vis = models.FloatField(null=True, blank=True)
-    butee_vis = models.FloatField(null=True, blank=True)
 
-    pince_vis = models.CharField(max_length=50, blank=True)
     h_pince_ext = models.FloatField(null=True, blank=True)
-    type_pince_ext = models.CharField(max_length=50, blank=True)
-
     h_pince_int = models.FloatField(null=True, blank=True)
-    type_pince_int = models.CharField(max_length=50, blank=True)
 
     cadence = models.FloatField(null=True, blank=True)
     visseuse = models.CharField(max_length=50, blank=True)
