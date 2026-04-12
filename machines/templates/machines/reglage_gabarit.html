@@ -1,28 +1,26 @@
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Réglage {{ reglage.numeros_of }}</title>
+    <title>Réglage {{ reglage.numeros_of|default:"(sans OF)" }}</title>
 
     <style>
         body { font-family: Arial; }
         h2 { margin-top: 30px; border-bottom: 2px solid #999; padding-bottom: 5px; }
         table { border-collapse: collapse; width: 100%; margin-top: 10px; }
-        th, td { border: 1px solid #ccc; padding: 6px; }
+        th, td { border: 1px solid #ccc; padding: 6px; vertical-align: top; }
         th { background: #eee; }
 
         input[type="text"], textarea, select {
-            width: 250px;
+            width: 220px;
             padding: 4px;
         }
 
-        textarea {
-            resize: vertical;
-        }
+        textarea { resize: vertical; }
 
         #observation {
-            width: 600px;
+            width: 100%;
+            max-width: 1000px;
             height: 120px;
         }
 
@@ -32,27 +30,44 @@
             margin-right: 8px;
             border: none;
         }
-
         .btn-save { background: #4CAF50; color: white; }
         .btn-edit { background: #2196F3; color: white; }
         .btn-cancel { background: #ccc; }
         .btn-delete { background: #d9534f; color: white; }
+        .btn-small { padding: 6px 10px; font-size: 13px; }
+
+        .inline-help { color: #666; font-size: 12px; margin-top: 4px; }
+
+        /* Petits inputs dans le tableau pompes */
+        .small-input { width: 120px; }
+        .wide-select { width: 240px; }
+
+        /* Affichage “—” */
+        .dash { color: #888; }
     </style>
 </head>
 
 <body>
 
+<!-- ========================= -->
+<!-- LOGOUT (form séparé) -->
+<!-- ========================= -->
 <form method="post" action="{% url 'logout' %}" style="display:inline;">
     {% csrf_token %}
-    <button type="submit">🚪 Déconnexion</button>
+    <button type="submit" class="btn btn-small">🚪 Déconnexion</button>
 </form>
 
 <a href="{% url 'recherche_reglages' %}">⬅ Retour à la recherche</a>
 
-<h1>Réglage : {{ reglage.numeros_of }} - {{ reglage.numeros_lot }} - {{ reglage.nom_produit }}</h1>
+<h1>
+    Réglage :
+    {{ reglage.numeros_of|default:"(sans OF)" }}
+    - {{ reglage.numeros_lot|default:"(sans lot)" }}
+    - {{ reglage.nom_produit|default:"(sans nom)" }}
+</h1>
 
 <!-- ========================= -->
-<!-- FORMULAIRE UNIQUE EDIT -->
+<!-- FORM UNIQUE SI MODE EDIT -->
 <!-- ========================= -->
 {% if mode == "edit" %}
 <form method="post">
@@ -63,180 +78,477 @@
 <!-- BOUTONS -->
 <!-- ========================= -->
 <div style="margin-bottom:20px;">
+    {% if perms.machines.change_reglageeko %}
+        {% if mode == "edit" %}
+            <a href="{% url 'detail_reglage' reglage.id %}">
+                <button type="button" class="btn btn-cancel">↩ Annuler</button>
+            </a>
 
-{% if perms.machines.change_reglageeko %}
-    {% if mode == "edit" %}
-        <a href="{% url 'detail_reglage' reglage.id %}">
-            <button type="button" class="btn btn-cancel">↩ Annuler</button>
-        </a>
+            <button type="submit" name="mode" value="update" class="btn btn-save">
+                ✅ Enregistrer
+            </button>
+        {% else %}
+            <a href="{% url 'edit_reglage' reglage.id %}">
+                <button type="button" class="btn btn-edit">✏️ Modifier</button>
+            </a>
+        {% endif %}
+    {% endif %}
 
-        <button type="submit"
-                name="mode"
-                value="update"
-                class="btn btn-save">
-            ✅ Enregistrer
-        </button>
-    {% else %}
-        <a href="{% url 'edit_reglage' reglage.id %}">
-            <button type="button" class="btn btn-edit">✏️ Modifier</button>
+    {% if perms.machines.delete_reglageeko and mode != "edit" %}
+        <a href="{% url 'delete_reglage' reglage.id %}">
+            <button type="button" class="btn btn-delete">❌ Supprimer</button>
         </a>
     {% endif %}
-{% endif %}
-
-{% if perms.machines.delete_reglageeko and mode != "edit" %}
-    <a href="/reglage/{{ reglage.id }}/delete/">
-        <button type="button" class="btn btn-delete">❌ Supprimer</button>
-    </a>
-{% endif %}
-
 </div>
 
-
-
-
-<!-- ✅ SECTION : Informations principales -->
+<!-- ========================= -->
+<!-- INFORMATIONS PRINCIPALES -->
+<!-- ========================= -->
 <h2>Informations principales</h2>
+
 <table>
-    <tr><th>Référence</th>
+    <tr>
+        <th>Référence</th>
         <td>
-        {% if mode == "edit" %}
-        <input type="text"
-                name="ref"
-                value="{{ reglage.ref }}"
-                maxlength="50">
-        {% else %}
-        {{ reglage.ref }}
-        {% endif %}
-        </td>
-    <th>Nom produit</th>
-        <td>
-        {% if mode == "edit" %}
-            <input type="text"
-                name="nom_produit"
-                value="{{ reglage.nom_produit }}"
-                maxlength="50">
-        {% else %}
-            {{ reglage.nom_produit }}
-        {% endif %}
+            {% if mode == "edit" %}
+                <input type="text" name="ref" value="{{ reglage.ref|default:'' }}" maxlength="50">
+            {% else %}
+                {{ reglage.ref|default:"—" }}
+            {% endif %}
         </td>
 
-</td></tr>
-    <tr><th>OF</th><td> {% if mode == "edit" %}
-        <input type="text"
-                name="numeros_of"
-                value="{{ reglage.numeros_of }}"
-                maxlength="50">
-        {% else %}
-        {{ reglage.numeros_of }}
-        {% endif %}</td><th>Lot</th>
-        <td>{{ reglage.numeros_lot }}</td></tr>
+        <th>Nom produit</th>
+        <td>
+            {% if mode == "edit" %}
+                <input type="text" name="nom_produit" value="{{ reglage.nom_produit|default:'' }}" maxlength="100">
+            {% else %}
+                {{ reglage.nom_produit|default:"—" }}
+            {% endif %}
+        </td>
+    </tr>
+
     <tr>
-    <th>Date réglage</th>
-    <td>
-    {% if mode == "edit" %}
-        <input type="date"
-               name="date_reglage"
-               value="{{ reglage.date_reglage|date:'Y-m-d' }}">
-    {% else %}
-        {% if reglage.date_reglage %}
-            {{ reglage.date_reglage|date:"l d F Y" }}
-       
+        <th>OF</th>
+        <td>
+            <!-- OF généralement non modifiable : on l’affiche -->
+            {{ reglage.numeros_of|default:"—" }}
+        </td>
 
-        {% else %}
-            —
-        {% endif %}
-    {% endif %}
-    </td>
+        <th>Lot</th>
+        <td>
+            {% if mode == "edit" %}
+                <input type="text" name="numeros_lot" value="{{ reglage.numeros_lot|default:'' }}" maxlength="100">
+            {% else %}
+                {{ reglage.numeros_lot|default:"—" }}
+            {% endif %}
+        </td>
+    </tr>
 
-
-    <th>Volume</th><td>{{ reglage.volume }}</td></tr>
-    <tr><th>Régleurs</th><td>{{ reglage.regleur}}</td></tr>
     <tr>
-    <th>OF précédent</th>
-    <td>
-        {% if reglage.of_precedent %}
-            <a href="{% url 'detail_reglage' reglage.of_precedent.id %}">
-                {{ reglage.of_precedent.numeros_of }} — {{ reglage.of_precedent.nom_produit }}
-            </a>
-        {% else %}
-            Aucun
-        {% endif %}
-    </td>
+        <th>Date réglage</th>
+        <td>
+            {% if mode == "edit" %}
+                <input type="date" name="date_reglage" value="{{ reglage.date_reglage|date:'Y-m-d' }}">
+            {% else %}
+                {% if reglage.date_reglage %}
+                    {{ reglage.date_reglage|date:"l d F Y" }}
+                {% else %}
+                    <span class="dash">—</span>
+                {% endif %}
+            {% endif %}
+        </td>
 
-    <th>OF lavage</th>
-    <td>
-        {% if reglage.of_lavage %}
-            <a href="{% url 'detail_reglage' reglage.of_lavage.id %}">
-                {{ reglage.of_lavage.numeros_of }} — {{ reglage.of_lavage.nom_produit }}
-            </a>
-        {% else %}
-            Aucun
-        {% endif %}
-    </td>
-</tr>
+        <th>Volume</th>
+        <td>
+            {% if mode == "edit" %}
+                <input type="text" name="volume" value="{{ reglage.volume|floatformat:'g' }}" class="small-input">
+            {% else %}
+                {% if reglage.volume != None %}
+                    {{ reglage.volume|floatformat:'g' }}
+                {% else %}
+                    <span class="dash">—</span>
+                {% endif %}
+            {% endif %}
+        </td>
+    </tr>
+
+    <tr>
+        <th>Régleur</th>
+        <td>
+            {% if mode == "edit" %}
+                <input type="text" name="regleur" value="{{ reglage.regleur|default:'' }}" maxlength="100">
+            {% else %}
+                {{ reglage.regleur|default:"—" }}
+            {% endif %}
+        </td>
+
+        <th>Volume démarrage</th>
+        <td>
+            {% if mode == "edit" %}
+                <input type="text" name="volume_demarrage" value="{{ reglage.volume_demarrage|floatformat:'g' }}" class="small-input">
+            {% else %}
+                {% if reglage.volume_demarrage != None %}
+                    {{ reglage.volume_demarrage|floatformat:'g' }}
+                {% else %}
+                    <span class="dash">—</span>
+                {% endif %}
+            {% endif %}
+        </td>
+    </tr>
+
+    <tr>
+        <th>OF précédent</th>
+        <td>
+            {% if mode == "edit" %}
+                <select name="of_precedent" class="wide-select">
+                    <option value="">---</option>
+                    {% for of in ofs %}
+                        <option value="{{ of.id }}"
+                            {% if reglage.of_precedent and reglage.of_precedent.id == of.id %}selected{% endif %}>
+                            {{ of.numeros_of }} — {{ of.nom_produit }}
+                        </option>
+                    {% endfor %}
+                </select>
+            {% else %}
+                {% if reglage.of_precedent %}
+                    <a href="{% url 'detail_reglage' reglage.of_precedent.id %}">
+                        {{ reglage.of_precedent.numeros_of }} — {{ reglage.of_precedent.nom_produit }}
+                    </a>
+                {% else %}
+                    <span class="dash">Aucun</span>
+                {% endif %}
+            {% endif %}
+        </td>
+
+        <th>OF lavage</th>
+        <td>
+            {% if mode == "edit" %}
+                <select name="of_lavage" class="wide-select">
+                    <option value="">---</option>
+                    {% for of in ofs %}
+                        <option value="{{ of.id }}"
+                            {% if reglage.of_lavage and reglage.of_lavage.id == of.id %}selected{% endif %}>
+                            {{ of.numeros_of }} — {{ of.nom_produit }}
+                        </option>
+                    {% endfor %}
+                </select>
+            {% else %}
+                {% if reglage.of_lavage %}
+                    <a href="{% url 'detail_reglage' reglage.of_lavage.id %}">
+                        {{ reglage.of_lavage.numeros_of }} — {{ reglage.of_lavage.nom_produit }}
+                    </a>
+                {% else %}
+                    <span class="dash">Aucun</span>
+                {% endif %}
+            {% endif %}
+        </td>
+    </tr>
 </table>
-<!-- ✅ Observations -->
+
+<!-- ========================= -->
+<!-- OBSERVATIONS -->
+<!-- ========================= -->
 <h2>Observations</h2>
-<p>{{ reglage.observation }}</p>
-<!-- ✅ SECTION : Remplissage -->
-<h2>Remplissage</h2>
-<table>
-    <tr><th>Moussant</th><td>{{ reglage.moussant }}</td><th>Ref flacon</th><td>{{ reglage.ref_flacon}}</td><th>Programme</th><td>{{ reglage.programme }}</td><th>Godet</th><td>{{ reglage.godet }}</td><th>Volume démarrage</th><td>{{ reglage.volume_demarrage }}</td><th>Filtre</th><td>{{ reglage.filtre }}</td></tr>
-</table>
 
-<!-- ✅ SECTION : Pompes -->
-<h2>Remplissage</h2>
-<table>
-    <tr><th>Type de bec</th><td>{{ reglage.type_bec }}</td></tr>
-    {% if reglage.pompe_1 %}<tr><th>P1</th><td>{{ reglage.pompe_1 }}</td><th>Valeur</th><td>{{ reglage.valeur_1 }}</td><th>Bec</th><td>{{ reglage.tube_bec_1 }}</td><th>centreur</th><td>{{ reglage.centerur_1 }}</td><th>Motorisé</th><td>{{ reglage.motorise_1}}</td></tr>{% endif %}
-    {% if reglage.pompe_2 %}<tr><th>P2</th><td>{{ reglage.pompe_2 }}</td><th>Valeur</th><td>{{ reglage.valeur_2 }}</td><th>Bec</th><td>{{ reglage.tube_bec_2 }}</td><th>centreur</th><td>{{ reglage.centerur_2 }}</td><th>Motorisé</th><td>{{ reglage.motorise_2}}</td></tr>{% endif %}
-    {% if reglage.pompe_3 %}<tr><th>P3</th><td>{{ reglage.pompe_3 }}</td><th>Valeur</th><td>{{ reglage.valeur_3 }}</td><th>Bec</th><td>{{ reglage.tube_bec_3 }}</td><th>centreur</th><td>{{ reglage.centerur_3 }}</td><th>Motorisé</th><td>{{ reglage.motorise_3}}</td></tr>{% endif %}
-    {% if reglage.pompe_4 %}<tr><th>P4</th><td>{{ reglage.pompe_4 }}</td><th>Valeur</th><td>{{ reglage.valeur_4 }}</td><th>Bec</th><td>{{ reglage.tube_bec_4 }}</td><th>centreur</th><td>{{ reglage.centerur_4 }}</td></tr>{% endif %}
-</table>
-
-<!-- ✅ SECTION : Hauteurs -->
-<h2>Hauteurs</h2>
-<table>
-    <tr><th>H machine</th><td>{{ reglage.h_machine }}</td></tr>
-    <tr><th>Contrôle jus H</th><td>{{ reglage.ctrl_jus_h }}</td><th>Contrôle jus prof</th><td>{{ reglage.ctrl_jus_prof }}</td></tr>
-    <tr><th>Contrôle ultra</th><td>{{ reglage.ctrl_ultra }}</td><th>H compo 1</th><td>{{ reglage.h_compo_1 }}</td><th> compo 2</th><td>{{ reglage.h_compo_2 }}</td></tr>
-</table>
-
-<!-- ✅ SECTION : Marteau / Visseuse / Pince -->
-<h2>Visseuse</h2>
-<table>
-    <tr><th>Présence visseuse</th><td>{{ reglage.presence_visseuse }}</td></tr>
-    {% if reglage.presence_visseuse == "Vrai" %}
-    <tr><th>Couple vis</th><td>{{ reglage.couple_vis }}</td><th>Butée vis</th><td>{{ reglage.butee_vis }}</td><th>Pince vis</th><td>{{ reglage.pince_vis }}</td></tr>
-    <tr><th>H pince ext</th><td>{{ reglage.h_pince_ext }}</td><th>H pince int</th><td>{{ reglage.h_pince_int }}</td><th>Pince flacon</th><td>{{ reglage.type_pince_int }}</td></tr>
+{% if mode == "edit" %}
+    <textarea id="observation" name="observation" maxlength="1000">{{ reglage.observation|default:"" }}</textarea>
+    <div class="inline-help">Texte long autorisé (1000 caractères).</div>
+{% else %}
+    {% if reglage.observation %}
+        <p style="white-space:pre-line;">{{ reglage.observation }}</p>
+    {% else %}
+        <p class="dash">—</p>
     {% endif %}
-</table>
+{% endif %}
 
-<!-- ✅ SECTION : Cueilleur -->
-<h2>Cueilleur</h2>
+<!-- ========================= -->
+<!-- REMPLISSAGE -->
+<!-- ========================= -->
+<h2>Remplissage</h2>
+
 <table>
-    <tr><th>Présence</th><td>{{ reglage.presence_cueilleur }}</td></tr>
-     {% if reglage.presence_cueilleur == "Vrai" %}
-    <tr><th>Cueilleur</th><td>{{ reglage.cueilleur }}</td></tr>
-    <tr><th>Cueilleur 1</th><td>{{ reglage.cueilleur_1 }}</td></tr>
-    <tr><th>Cueilleur 2</th><td>{{ reglage.cueilleur_2 }}</td></tr>
-    <tr><th>Cueilleur 3</th><td>{{ reglage.cueilleur_3 }}</td></tr>
-     {% endif %}
+    <tr>
+        <th>Moussant</th>
+        <td>
+            {% if mode == "edit" %}
+                <input type="text" name="moussant" value="{{ reglage.moussant|default:'' }}" maxlength="50">
+            {% else %}
+                {{ reglage.moussant|default:"—" }}
+            {% endif %}
+        </td>
+
+        <th>Ref flacon</th>
+        <td>
+            {% if mode == "edit" %}
+                <input type="text" name="ref_flacon" value="{{ reglage.ref_flacon|default:'' }}" maxlength="50">
+            {% else %}
+                {{ reglage.ref_flacon|default:"—" }}
+            {% endif %}
+        </td>
+
+        <th>Programme</th>
+        <td>
+            {% if mode == "edit" %}
+                <input type="text" name="programme" value="{{ reglage.programme|default:'' }}" maxlength="50">
+            {% else %}
+                {{ reglage.programme|default:"—" }}
+            {% endif %}
+        </td>
+    </tr>
+
+    <tr>
+        <th>Godet</th>
+        <td>
+            {% if mode == "edit" %}
+                <select name="godet" class="godet-select wide-select">
+                    <option value="">---</option>
+
+                    {% for g in godets %}
+                        <option value="{{ g.id }}"
+                            {% if reglage.godet and reglage.godet.id == g.id %}selected{% endif %}>
+                            {{ g.valeur }}
+                        </option>
+                    {% endfor %}
+
+                    <option value="_new">➕ Nouveau…</option>
+                </select>
+
+                <input type="text"
+                       class="godet-input"
+                       name="godet_new_value"
+                       placeholder="Nouveau godet"
+                       style="display:none; margin-top:5px;">
+            {% else %}
+                {% if reglage.godet %}
+                    {{ reglage.godet.valeur }}
+                {% else %}
+                    <span class="dash">—</span>
+                {% endif %}
+            {% endif %}
+        </td>
+
+        <th>Filtre</th>
+        <td>
+            {% if mode == "edit" %}
+                {% with v=reglage.filtre|stringformat:"s"|lower %}
+                <select name="filtre" style="width:120px;">
+                    <option value="False" {% if v == "" or v == "none" or v == "false" or v == "non" %}selected{% endif %}>Non</option>
+                    <option value="True"  {% if v == "true" or v == "vrai" or v == "oui" or v == "1" %}selected{% endif %}>Oui</option>
+                </select>
+                {% endwith %}
+            {% else %}
+                {% if reglage.filtre %}
+                    ✅ Oui
+                {% else %}
+                    ❌ Non
+                {% endif %}
+            {% endif %}
+        </td>
+
+        <th>Type de bec</th>
+        <td>
+            {% if mode == "edit" %}
+                <input type="text" name="type_bec" value="{{ reglage.type_bec|default:'' }}" maxlength="50">
+            {% else %}
+                {{ reglage.type_bec|default:"—" }}
+            {% endif %}
+        </td>
+    </tr>
 </table>
 
-<!-- ✅ SECTION : VRAC -->
-<h2>Vrac</h2>
+<!-- ========================= -->
+<!-- POMPES (boucle simplifiée) -->
+<!-- ========================= -->
+<h2>Pompes</h2>
+
 <table>
-    <tr><th>Ref</th><td>{{ reglage.vrac }}</td><th>Type</th><td>{{ reglage.vrac_type }}</td></tr>
-    <tr><th>Commentaire</th><td>{{ reglage.vrac_commentaire }}</td></tr>
-    <tr><th>Pompe vrac</th><td>{{ reglage.vrac_pompe }}</td><th>Etuve</th><td>{{ reglage.vrac_etuve }}</td><th>T° ambiante</th><td>{{ reglage.vrac_temperature }}</td></tr>
-    <tr><th>Circuit fermé microbio</th><td>{{ reglage.vrac_circuit_ferme_microbio }}</td><th>Validation labo</th><td>{{ reglage.vrac_labo_validation }}</td><th>Validation microbio</th><td>{{ reglage.vrac_microbio_validation }}</td></tr>
+    {% for p in pompes %}
+    <tr>
+        <th>P{{ p.num }}</th>
+
+        <!-- Pompe -->
+        <td>
+            {% if mode == "edit" %}
+                <select name="pompe_{{ p.num }}" style="width:120px;">
+                    <option value=""></option>
+                    <option value="20"  {% if p.pompe == "20" %}selected{% endif %}>20</option>
+                    <option value="60"  {% if p.pompe == "60" %}selected{% endif %}>60</option>
+                    <option value="125" {% if p.pompe == "125" %}selected{% endif %}>125</option>
+                    <option value="250" {% if p.pompe == "250" %}selected{% endif %}>250</option>
+                </select>
+            {% else %}
+                {% if p.pompe %}
+                    {{ p.pompe }}
+                {% else %}
+                    <span class="dash">—</span>
+                {% endif %}
+            {% endif %}
+        </td>
+
+        <!-- Valeur -->
+        <th>Valeur</th>
+        <td>
+            {% if mode == "edit" %}
+                <input type="text" name="valeur_{{ p.num }}" value="{{ p.valeur|floatformat:'g' }}" class="small-input">
+            {% else %}
+                {% if p.valeur != None %}
+                    {{ p.valeur|floatformat:'g' }}
+                {% else %}
+                    <span class="dash">—</span>
+                {% endif %}
+            {% endif %}
+        </td>
+
+        <!-- Bec (table Bec + Nouveau) -->
+        <th>Bec</th>
+        <td>
+            {% if mode == "edit" %}
+                <select name="tube_bec_{{ p.num }}" class="tube-select wide-select" data-num="{{ p.num }}">
+                    <option value="">---</option>
+
+                    {% for b in becs %}
+                        <option value="{{ b.id }}"
+                            {% if p.bec and p.bec.id == b.id %}selected{% endif %}>
+                            {{ b.valeur }}
+                        </option>
+                    {% endfor %}
+
+                    <option value="_new">➕ Nouveau…</option>
+                </select>
+
+                <input type="text"
+                       class="tube-input"
+                       data-num="{{ p.num }}"
+                       name="tube_bec_{{ p.num }}_new_value"
+                       placeholder="Nouveau bec"
+                       style="display:none; margin-top:5px;">
+            {% else %}
+                {% if p.bec %}
+                    {{ p.bec.valeur }}
+                {% else %}
+                    <span class="dash">—</span>
+                {% endif %}
+            {% endif %}
+        </td>
+
+        <!-- Centreur (table Centreur + Nouveau) -->
+        <th>Centreur</th>
+        <td>
+            {% if mode == "edit" %}
+                <select name="centerur_{{ p.num }}" class="centreur-select wide-select" data-num="{{ p.num }}">
+                    <option value="">---</option>
+
+                    {% for c in centreurs %}
+                        <option value="{{ c.id }}"
+                            {% if p.centerur and p.centerur.id == c.id %}selected{% endif %}>
+                            {{ c.valeur }}
+                        </option>
+                    {% endfor %}
+
+                    <option value="_new">➕ Nouveau…</option>
+                </select>
+
+                <input type="text"
+                       class="centreur-input"
+                       data-num="{{ p.num }}"
+                       name="centerur_{{ p.num }}_new_value"
+                       placeholder="Nouveau centreur"
+                       style="display:none; margin-top:5px;">
+            {% else %}
+                {% if p.centerur %}
+                    {{ p.centerur.valeur }}
+                {% else %}
+                    <span class="dash">—</span>
+                {% endif %}
+            {% endif %}
+        </td>
+
+        <!-- Motorisé (uniquement 1..3) -->
+        {% if p.num <= 3 %}
+        <th>Motorisé</th>
+        <td>
+            {% if mode == "edit" %}
+                {% with v=p.motorise|stringformat:"s"|lower %}
+                <select name="motorise_{{ p.num }}" style="width:120px;">
+                    <option value="False" {% if v == "" or v == "none" or v == "false" or v == "non" %}selected{% endif %}>Non</option>
+                    <option value="True"  {% if v == "true" or v == "vrai" or v == "oui" or v == "1" %}selected{% endif %}>Oui</option>
+                </select>
+                {% endwith %}
+            {% else %}
+                {% if p.motorise %}
+                    ✅ Oui
+                {% else %}
+                    ❌ Non
+                {% endif %}
+            {% endif %}
+        </td>
+        {% endif %}
+    </tr>
+    {% endfor %}
 </table>
 
-
+<!-- ========================= -->
+<!-- FIN FORM -->
+<!-- ========================= -->
 {% if mode == "edit" %}
 </form>
 {% endif %}
+
+<!-- ========================= -->
+<!-- JS GLOBAL : affiche input si _new -->
+<!-- ========================= -->
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+
+  // GODet
+  document.querySelectorAll(".godet-select").forEach(sel => {
+    const input = document.querySelector(".godet-input");
+    if (!input) return;
+
+    const toggle = () => {
+      input.style.display = (sel.value === "_new") ? "block" : "none";
+      input.required = (sel.value === "_new");
+      if (sel.value !== "_new") input.value = "";
+    };
+
+    sel.addEventListener("change", toggle);
+    toggle();
+  });
+
+  // TUBES (becs) - un input par pompe via data-num
+  document.querySelectorAll(".tube-select").forEach(sel => {
+    const num = sel.dataset.num;
+    const input = document.querySelector(`.tube-input[data-num="${num}"]`);
+    if (!input) return;
+
+    const toggle = () => {
+      input.style.display = (sel.value === "_new") ? "block" : "none";
+      input.required = (sel.value === "_new");
+      if (sel.value !== "_new") input.value = "";
+    };
+
+    sel.addEventListener("change", toggle);
+    toggle();
+  });
+
+  // CENTREURS - un input par pompe via data-num
+  document.querySelectorAll(".centreur-select").forEach(sel => {
+    const num = sel.dataset.num;
+    const input = document.querySelector(`.centreur-input[data-num="${num}"]`);
+    if (!input) return;
+
+    const toggle = () => {
+      input.style.display = (sel.value === "_new") ? "block" : "none";
+      input.required = (sel.value === "_new");
+      if (sel.value !== "_new") input.value = "";
+    };
+
+    sel.addEventListener("change", toggle);
+    toggle();
+  });
+
+});
+</script>
 
 </body>
 </html>

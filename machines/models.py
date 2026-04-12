@@ -1,6 +1,19 @@
 from django.db import models
 
 
+class Bec(models.Model):
+    valeur = models.CharField(max_length=50, unique=True)
+
+    def __str__(self):
+        return self.valeur
+
+
+class Centreur(models.Model):
+    valeur = models.CharField(max_length=50, unique=True)
+
+    def __str__(self):
+        return self.valeur
+
 class Godet(models.Model):
     valeur = models.CharField(max_length=50, unique=True)
 
@@ -61,41 +74,41 @@ class ReglageEKO(models.Model):
     # =====================================================
     # POMPE 1
     # =====================================================
-    pompe_1 = models.CharField(max_length=10, blank=True)
+    pompe_1 = models.CharField(max_length=10, null=True, blank=True)
     motorise_1 = models.CharField(max_length=10, blank=True)
     valeur_1 = models.FloatField(null=True, blank=True)
-    bute_bec_1 = models.CharField(max_length=50, blank=True)
-    tube_bec_1 = models.CharField(max_length=50, blank=True)
-    centerur_1 = models.CharField(max_length=50, blank=True)
+    bute_bec_1 = models.CharField(max_length=50, null=True, blank=True)
+    tube_bec_1 = models.ForeignKey(Bec, null=True, blank=True, on_delete=models.SET_NULL, related_name="tubes_bec_p1")
+    centerur_1 = models.ForeignKey(Centreur, null=True, blank=True, on_delete=models.SET_NULL, related_name="p1")
 
     # =====================================================
     # POMPE 2
     # =====================================================
-    pompe_2 = models.CharField(max_length=10, blank=True)
+    pompe_2 = models.CharField(max_length=10, null=True, blank=True)
     motorise_2 = models.CharField(max_length=10, blank=True)
     valeur_2 = models.FloatField(null=True, blank=True)
-    bute_bec_2 = models.CharField(max_length=50, blank=True)
-    tube_bec_2 = models.CharField(max_length=50, blank=True)
-    centerur_2 = models.CharField(max_length=50, blank=True)
+    bute_bec_2 = models.CharField(max_length=50, null=True, blank=True)
+    tube_bec_2 = models.ForeignKey(Bec, null=True, blank=True, on_delete=models.SET_NULL, related_name="tubes_bec_p2")
+    centerur_2 = models.ForeignKey(Centreur, null=True, blank=True, on_delete=models.SET_NULL, related_name="p2")
 
     # =====================================================
     # POMPE 3
     # =====================================================
-    pompe_3 = models.CharField(max_length=10, blank=True)
+    pompe_3 = models.CharField(max_length=50, null=True, blank=True)
     motorise_3 = models.CharField(max_length=10, blank=True)
     valeur_3 = models.FloatField(null=True, blank=True)
-    bute_bec_3 = models.CharField(max_length=50, blank=True)
-    tube_bec_3 = models.CharField(max_length=50, blank=True)
-    centerur_3 = models.CharField(max_length=50, blank=True)
+    bute_bec_3 = models.CharField(max_length=50, null=True, blank=True)
+    tube_bec_3 = models.ForeignKey(Bec, null=True, blank=True, on_delete=models.SET_NULL, related_name="tubes_bec_p3")
+    centerur_3 = models.ForeignKey(Centreur, null=True, blank=True, on_delete=models.SET_NULL, related_name="p3")
 
     # =====================================================
     # POMPE 4
     # =====================================================
-    pompe_4 = models.CharField(max_length=10, blank=True)
+    pompe_4 = models.CharField(max_length=10, null=True, blank=True)
     valeur_4 = models.FloatField(null=True, blank=True)
-    bute_bec_4 = models.CharField(max_length=50, blank=True)
-    tube_bec_4 = models.CharField(max_length=50, blank=True)
-    centerur_4 = models.CharField(max_length=50, blank=True)
+    bute_bec_4 = models.CharField(max_length=50, null=True, blank=True)
+    tube_bec_4 = models.ForeignKey(Bec, null=True, blank=True, on_delete=models.SET_NULL, related_name="tubes_bec_p4")
+    centerur_4 = models.CharField(max_length=50, null=True, blank=True)
 
     # =====================================================
     # BEC / HAUTEURS / CONTROLES

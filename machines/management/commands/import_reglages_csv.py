@@ -1,231 +1,243 @@
 import csv
 from datetime import datetime
-from pathlib import Path
 from collections import defaultdict
 
 from django.core.management.base import BaseCommand
-from django.utils import timezone
+from django.db import transaction
 
-from machines.models import ReglageEKO, Godet
+from machines.models import ReglageEKO, Godet, Bec, Centreur
 
 
-
-# ==========================================================
-# UTILS
-# ==========================================================
+# =========================
+# Utils
+# =========================
 def clean(v):
     if v is None:
         return ""
     return str(v).strip()
 
 
-def normalize_of(v):
-    v = clean(v)
-    if not v:
-        return None
-    return (
-        v.upper()
-        .replace(" ", "")
-        .replace("\u00A0", "")
-        .strip()
-    )
-
-
-
-def to_date(value):
-    value = str(value).strip() if value else ""
-
-    if not value:
-        return None
-
-    for fmt in ("%Y/%m/%d", "%y/%m/%d"):
-        try:
-            return datetime.strptime(value, fmt).date()
-        except ValueError:
-            pass
-
-    return None
-
-
-
 def to_float(v):
     v = clean(v)
-    if v == "" or v.lower() in ["nc", "n/c"]:
+    if v == "" or v.lower() in ("nc", "n/c"):
         return None
     try:
         return float(v.replace(",", "."))
-    except Exception:
+    except ValueError:
         return None
 
 
-def suffix(n):
-    """0 -> '', 1 -> A, 2 -> B, 3 -> C ..."""
-    if n == 0:
-        return ""
-    return chr(ord("A") + n - 1)
+def to_date(v):
+    v = clean(v)
+    if not v:
+        return None
+    for fmt in ("%Y/%m/%d", "%y/%m/%d"):
+        try:
+            return datetime.strptime(v, fmt).date()
+        except ValueError:
+            pass
+    return None
+
+
+def parse_bool(v):
+    v = clean(v).lower()
+    if v in ("true", "vrai", "oui", "1", "on", "checked"):
+        return True
+    if v in ("false", "faux", "non", "0"):
+        return False
+    # par défaut -> False (comme tu voulais)
+    return False
 
 
 def get_godet(v):
     v = clean(v)
     if not v:
         return None
-    godet, _ = Godet.objects.get_or_create(valeur=v)
-    return godet
+    obj, _ = Godet.objects.get_or_create(valeur=v)
+    return obj
 
 
-# ==========================================================
-# COMMAND
-# ==========================================================
+def get_bec(v):
+    v = clean(v)
+    if not v:
+        return None
+    obj, _ = Bec.objects.get_or_create(valeur=v)
+    return obj
+
+
+def get_centreur(v):
+    v = clean(v)
+    if not v:
+        return None
+    obj, _ = Centreur.objects.get_or_create(valeur=v)
+    return obj
+
+
+def suffix(idx: int) -> str:
+    """
+    idx=0 -> ''
+    idx=1 -> 'A'
+    idx=2 -> 'B'
+    ...
+    """
+    if idx <= 0:
+        return ""
+    return chr(ord("A") + idx - 1)
+
+
+# =========================
+# Command
+# =========================
 class Command(BaseCommand):
-    help = "Import CSV COMPLET avec OF uniques (A,B,C) et Godet FK"
+    help = "Import CSV complet (Godet/Bec/Centreur) + OF uniques A/B/C + OF vides = NULL + liens OF"
 
-    def handle(self, *args, **options):
-
-        project_root = Path(__file__).resolve().parents[3]
-        csv_path = project_root / "data" / "Fiche_de_reglage_PKB.csv"
-
-        self.stdout.write(f"📄 Import depuis : {csv_path}")
-
-        reader = csv.DictReader(
-            open(csv_path, encoding="utf-8-sig"),
-            delimiter=","
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--purge",
+            action="store_true",
+            help="Vide ReglageEKO/Godet/Bec/Centreur avant import (recommandé)",
         )
 
-        of_counter = defaultdict(int)
+    def handle(self, *args, **options):
+        path = "data/Fiche_de_reglage_PKB.csv"
+        self.stdout.write(f"📄 Import depuis : {path}")
+
+        if options["purge"]:
+            self.stdout.write("🧹 Purge des tables (ReglageEKO, Godet, Bec, Centreur)…")
+            ReglageEKO.objects.all().delete()
+            Godet.objects.all().delete()
+            Bec.objects.all().delete()
+            Centreur.objects.all().delete()
+        else:
+            self.stdout.write("ℹ️ Astuce : relance avec --purge si tu veux éviter les conflits d'unicité.")
+
+        # Compteur pour suffixes A/B/C sur numerosOf (seulement si numerosOf existe)
+        seen_of = defaultdict(int)
+        empty_of = 0
+
+        # 2e passe pour résoudre OF précédent / lavage
+        pending_links = []   # (reglage_id, of_prec_raw, of_lav_raw)
+        first_by_raw_of = {} # raw_of -> 1er ReglageEKO créé (sans suffixe)
+
         created = 0
 
-        for row in reader:
+        with transaction.atomic():
+            with open(path, newline="", encoding="utf-8-sig") as f:
+                reader = csv.DictReader(f, delimiter=",", quotechar='"')
 
-            # ==================================================
-            # OF UNIQUE
-            # ==================================================
-            raw_of = normalize_of(row.get("numerosOf"))
+                # Décommente si besoin pour debug
+                # self.stdout.write(f"FIELDNAMES: {reader.fieldnames}")
 
-            if raw_of is None:
-                numeros_of = None
-            else:
-                idx = of_counter[raw_of]
-                numeros_of = f"{raw_of}{suffix(idx)}"
-                of_counter[raw_of] += 1
+                for row in reader:
+                    # -------------------------
+                    # OF : colonne = numerosOf
+                    # -------------------------
+                    raw_of = clean(row.get("numerosOf"))
 
-            # ==================================================
-            # CREATION DU REGLAGE
-            # ==================================================
-            ReglageEKO.objects.create(
+                    if raw_of:
+                        seen_of[raw_of] += 1
+                        idx = seen_of[raw_of] - 1
+                        unique_of = raw_of + suffix(idx)
+                    else:
+                        # ✅ OF vide => NULL (on n'ignore plus la ligne)
+                        empty_of += 1
+                        unique_of = None
 
-                # --- IDENTIFICATION ---
-                ref=clean(row.get("Titre")),
-                nom_produit=clean(row.get("Nom")),
-                numeros_of=numeros_of,
-                numeros_lot=clean(row.get("numerosLot")),
+                    # -------------------------
+                    # Création du réglage
+                    # -------------------------
+                    reglage = ReglageEKO()
 
-                of_precedent=None,
-                of_lavage=None,
+                    # Identité / entête
+                    reglage.numeros_of = unique_of
+                    reglage.ref = clean(row.get("Titre"))
+                    reglage.nom_produit = clean(row.get("Nom"))
+                    reglage.numeros_lot = clean(row.get("numerosLot"))
+                    reglage.regleur = clean(row.get("Régleur"))
+                    reglage.observation = clean(row.get("Observation"))
 
-                date_reglage=to_date(row.get("Date")),
-                regleur=clean(row.get("Régleur")),
-                observation=clean(row.get("Observation")),
+                    # Date / volumes
+                    reglage.date_reglage = to_date(row.get("Date"))
+                    reglage.volume = to_float(row.get("Volume"))
+                    reglage.volume_demarrage = to_float(row.get("Volume démarrage"))
 
-                # --- REMPLISSAGE ---
-                moussant=clean(row.get("Moussant")),
-                ref_flacon=clean(row.get("Ref flacon")),
-                programme=clean(row.get("Programme")),
-                godet=get_godet(row.get("Godet")),
-                volume=to_float(row.get("Volume")),
-                volume_demarrage=to_float(row.get("Volume démarrage")),
-                filtre=clean(row.get("Filtre")),
+                    # Remplissage
+                    reglage.moussant = clean(row.get("Moussant"))
+                    reglage.ref_flacon = clean(row.get("Ref flacon"))
+                    reglage.programme = clean(row.get("Programme"))
+                    reglage.godet = get_godet(row.get("Godet"))
+                    reglage.filtre = parse_bool(row.get("Filtre"))
 
-                # --- POMPE 1 ---
-                pompe_1=clean(row.get("Pompe 1")),
-                motorise_1=clean(row.get("Motorisé 1")),
-                valeur_1=to_float(row.get("valeur 1")),
-                bute_bec_1=clean(row.get("Bute bec 1")),
-                tube_bec_1=clean(row.get("tube bec 1")),
-                centerur_1=clean(row.get("Centreur 1")),
+                    # Pompes
+                    reglage.pompe_1 = clean(row.get("Pompe 1"))
+                    reglage.pompe_2 = clean(row.get("Pompe 2"))
+                    reglage.pompe_3 = clean(row.get("Pompe 3"))
+                    reglage.pompe_4 = clean(row.get("Pompe 4"))
 
-                # --- POMPE 2 ---
-                pompe_2=clean(row.get("Pompe 2")),
-                motorise_2=clean(row.get("motorisé 2")),
-                valeur_2=to_float(row.get("valeur 2")),
-                bute_bec_2=clean(row.get("bute bec 2")),
-                tube_bec_2=clean(row.get("tube bec 2")),
-                centerur_2=clean(row.get("Centreur 2")),
+                    reglage.valeur_1 = to_float(row.get("valeur 1"))
+                    reglage.valeur_2 = to_float(row.get("valeur 2"))
+                    reglage.valeur_3 = to_float(row.get("valeur 3"))
+                    reglage.valeur_4 = to_float(row.get("valeur 4"))
 
-                # --- POMPE 3 ---
-                pompe_3=clean(row.get("Pompe 3")),
-                motorise_3=clean(row.get("motorisé 3")),
-                valeur_3=to_float(row.get("valeur 3")),
-                bute_bec_3=clean(row.get("bute bec 3")),
-                tube_bec_3=clean(row.get("tube bec 3")),
-                centerur_3=clean(row.get("Centreur 3")),
+                    # ✅ Becs (FK)
+                    reglage.tube_bec_1 = get_bec(row.get("tube bec 1"))
+                    reglage.tube_bec_2 = get_bec(row.get("tube bec 2"))
+                    reglage.tube_bec_3 = get_bec(row.get("tube bec 3"))
+                    reglage.tube_bec_4 = get_bec(row.get("tube bec 4"))
 
-                # --- POMPE 4 ---
-                pompe_4=clean(row.get("Pompe 4")),
-                valeur_4=to_float(row.get("valeur 4")),
-                bute_bec_4=clean(row.get("bute bec 4")),
-                tube_bec_4=clean(row.get("tube bec 4")),
-                centerur_4=clean(row.get("Centreur 4")),
+                    # ✅ Centreurs (FK) — colonne CSV = "Centreur 1..4"
+                    reglage.centerur_1 = get_centreur(row.get("Centreur 1"))
+                    reglage.centerur_2 = get_centreur(row.get("Centreur 2"))
+                    reglage.centerur_3 = get_centreur(row.get("Centreur 3"))
+                    reglage.centerur_4 = get_centreur(row.get("Centreur 4"))
 
-                # --- BEC / CONTROLES ---
-                type_bec=clean(row.get("Type de bec")),
-                h_machine=to_float(row.get("H machine")),
-                ctrl_jus_h=clean(row.get("ctrl jus H")),
-                ctrl_jus_prof=clean(row.get("ctrl jus prof")),
-                ctrl_ultra=clean(row.get("ctrl ultra")),
+                    # Motorisés (attention : 1 majuscule, 2/3 parfois minuscules)
+                    reglage.motorise_1 = parse_bool(row.get("Motorisé 1"))
+                    reglage.motorise_2 = parse_bool(row.get("motorisé 2"))
+                    reglage.motorise_3 = parse_bool(row.get("motorisé 3"))
+                    # pas de motorise_4
 
-                # --- MARTEAU / VISSEUSE ---
-                h_compo_1=to_float(row.get("H compo 1")),
-                presence_marteau=clean(row.get("Prés_Marteau")),
-                h_marteau=to_float(row.get("H marteau")),
+                    # Type de bec (si tu veux le garder comme texte)
+                    reglage.type_bec = clean(row.get("Type de bec"))
+                    reglage.h_machine = to_float(row.get("H machine"))
 
-                embout=clean(row.get("Embout")),
-                h_compo_2=to_float(row.get("H compo 2")),
-                presence_visseuse=clean(row.get("Prés_Visseuse")),
-                couple_vis=to_float(row.get("couple vis")),
-                butee_vis=to_float(row.get("buté vis")),
-                pince_vis=clean(row.get("pince vis")),
+                    # Stocker les liens OF pour 2e passe
+                    of_prec_raw = clean(row.get("Of precedent"))
+                    of_lav_raw = clean(row.get("Of Lavage"))
+                    pending_links.append((reglage.id, raw_of, of_prec_raw, of_lav_raw))  # raw_of utile
 
-                h_pince_ext=to_float(row.get("H pince ext")),
-                type_pince_ext=clean(row.get("Type pince ext")),
-                h_pince_int=to_float(row.get("H pince int")),
-                type_pince_int=clean(row.get("Type pince int")),
+                    reglage.save()
+                    created += 1
 
-                # --- DIVERS ---
-                cadence=to_float(row.get("cadence")),
-                visseuse=clean(row.get("visseuse")),
-                h_finale=to_float(row.get("H finale")),
-                convoyeur=clean(row.get("convoyeur")),
-                cames_bec_on=clean(row.get("cames bec on")),
-                cames_bec_off=clean(row.get("cames bec off")),
+                    # mémoriser le premier enregistrement pour ce raw_of (sans suffixe)
+                    if raw_of and raw_of not in first_by_raw_of:
+                        first_by_raw_of[raw_of] = reglage
 
-                # --- CUEILLEUR ---
-                presence_cueilleur=clean(row.get("presence_Ceuilleur")),
-                cueilleur=clean(row.get("Cueilleur")),
-                cueilleur_1=clean(row.get("Cueilleur 1 ")),
-                cueilleur_2=clean(row.get("Cueilleur 2")),
-                cueilleur_3=clean(row.get("Cueilleur 3")),
-                hauteur_rail=to_float(row.get("Hauteur rail")),
+            # -------------------------
+            # 2e passe : résoudre OF precedent/lavage
+            # -------------------------
+            for reg_id, raw_of, of_prec_raw, of_lav_raw in pending_links:
+                r = ReglageEKO.objects.filter(id=reg_id).first()
+                if not r:
+                    continue
 
-                # --- ETIQUETAGE ---
-                etiquette=clean(row.get("Etiquette")),
-                consigne_etiquette=clean(row.get("Consigne Etiquette")),
-                etiqueteuse=clean(row.get("Etiqueteuse")),
+                if of_prec_raw:
+                    # d'abord match exact, sinon "premier de la série"
+                    target = (
+                        ReglageEKO.objects.filter(numeros_of=of_prec_raw).first()
+                        or first_by_raw_of.get(of_prec_raw)
+                    )
+                    r.of_precedent = target
 
-                # --- VRAC ---
-                vrac=clean(row.get("vrac")),
-                vrac_type=clean(row.get("vrac: type vrac")),
-                vrac_pompe=clean(row.get("vrac: Pompe")),
-                vrac_etuve=clean(row.get("vrac: Etuve")),
-                vrac_temperature=clean(row.get("vrac: T°C ambiante")),
-                vrac_rincage_eko=clean(row.get("vrac: Rincage Eko")),
-                vrac_circuit_ferme_microbio=clean(row.get("vrac: Circuit Fermé Microbio")),
-                vrac_commentaire=clean(row.get("vrac: Commentaire")),
-                vrac_labo_validation=clean(row.get("vrac: Labo validation")),
-                vrac_microbio_validation=clean(row.get("vrac: Microbio validation")),
-            )
+                if of_lav_raw:
+                    target = (
+                        ReglageEKO.objects.filter(numeros_of=of_lav_raw).first()
+                        or first_by_raw_of.get(of_lav_raw)
+                    )
+                    r.of_lavage = target
 
-            created += 1
+                r.save(update_fields=["of_precedent", "of_lavage"])
 
         self.stdout.write(self.style.SUCCESS(
-            f"✅ Import terminé — {created} réglages créés, OF uniques garantis"
+            f"✅ Import terminé : {created} lignes créées | OF vides importés (NULL) : {empty_of}"
         ))

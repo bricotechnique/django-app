@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
 from .models import ReglageEKO
 from django.contrib.auth.decorators import login_required, permission_required
-from machines.models import ReglageEKO, Godet
+from machines.models import ReglageEKO, Godet, Bec, Centreur
 
 
 @login_required
@@ -21,13 +21,18 @@ def delete_reglage(request, reglage_id):
 # 1 — PAGE RECHERCHE
 # ============================================================
 
+def parse_bool(v):
+    if not v:
+        return False
+    return v.strip().lower() in ("true", "vrai", "oui", "1", "on", "checked")
+
 
 
 @login_required
 @permission_required("machines.add_reglageeko", raise_exception=True)
 def create_reglage(request):
     reglage = ReglageEKO.objects.create(
-        ref="NOUVEAU",
+        ref="",
         numeros_of=""
     )
     return redirect("edit_reglage", reglage_id=reglage.id)
@@ -66,10 +71,48 @@ def recherche_reglages(request):
 
 def detail_reglage(request, reglage_id):
     reglage = get_object_or_404(ReglageEKO, id=reglage_id)
-    
+
+    pompes = [
+    {
+        "num": 1,
+        "pompe": reglage.pompe_1,
+        "valeur": reglage.valeur_1,
+        "bec": reglage.tube_bec_1,
+        "centerur": reglage.centerur_1,
+        "motorise": reglage.motorise_1,
+    },
+    {
+        "num": 2,
+        "pompe": reglage.pompe_2,
+        "valeur": reglage.valeur_2,
+        "bec": reglage.tube_bec_2,
+        "centerur": reglage.centerur_2,
+        "motorise": reglage.motorise_2,
+    },
+    {
+        "num": 3,
+        "pompe": reglage.pompe_3,
+        "valeur": reglage.valeur_3,
+        "bec": reglage.tube_bec_3,
+        "centerur": reglage.centerur_3,
+        "motorise": reglage.motorise_3,
+    },
+    {
+        "num": 4,
+        "pompe": reglage.pompe_4,
+        "valeur": reglage.valeur_4,
+        "bec": reglage.tube_bec_4,
+        "centerur": reglage.centerur_4,
+        "motorise": None,  # ✅ IMPORTANT
+    },
+]
+
+
+
     return render(request, "machines/reglage_gabarit.html", {
-        "reglage": reglage,
-        "mode": "view",  
+    "reglage": reglage,
+    "mode": "view",
+    "pompes": pompes,
     })
 
 
@@ -87,6 +130,41 @@ def edit_reglage(request, reglage_id):
 
     ofs = ReglageEKO.objects.exclude(id=reglage.id).order_by("numeros_of")
     godets = Godet.objects.all().order_by("valeur")
+    pompes = [
+        {
+            "num": 1,
+            "pompe": reglage.pompe_1,
+            "valeur": reglage.valeur_1,
+            "bec": reglage.tube_bec_1,
+            "centerur": reglage.centerur_1,
+            "motorise": reglage.motorise_1,
+        },
+        {
+            "num": 2,
+            "pompe": reglage.pompe_2,
+            "valeur": reglage.valeur_2,
+            "bec": reglage.tube_bec_2,
+            "centerur": reglage.centerur_2,
+            "motorise": reglage.motorise_2,
+        },
+        {
+            "num": 3,
+            "pompe": reglage.pompe_3,
+            "valeur": reglage.valeur_3,
+            "bec": reglage.tube_bec_3,
+            "centerur": reglage.centerur_3,
+            "motorise": reglage.motorise_3,
+        },
+        {
+            "num": 4,
+            "pompe": reglage.pompe_4,
+            "valeur": reglage.valeur_4,
+            "bec": reglage.tube_bec_4,
+            "centerur": reglage.centerur_4,
+            "motorise": None,  # ✅ IMPORTANT
+        },
+    ]
+
 
     # ==========================
     # POST = sauvegarde
@@ -101,6 +179,9 @@ def edit_reglage(request, reglage_id):
         reglage.volume = request.POST.get("volume") or None
         reglage.observation = request.POST.get("observation", "")
 
+
+        
+
         date_str = request.POST.get("date_reglage")
 
         if date_str:
@@ -108,12 +189,22 @@ def edit_reglage(request, reglage_id):
         else:
             reglage.date_reglage = None
 
-        # Godet (FK)
-        godet_id = request.POST.get("godet")
-        reglage.godet = (
-            Godet.objects.filter(id=godet_id).first()
-            if godet_id else None
-        )
+    
+        bec_choice_1 = request.POST.get("tube_bec_1")
+        bec_new_1 = request.POST.get("tube_bec_1_new_value")
+
+        if bec_choice_1 == "_new" and bec_new_1:
+            bec_obj_1, _ = Bec.objects.get_or_create(valeur=bec_new_1.strip())
+            reglage.tube_bec_1 = bec_obj_1
+        elif bec_choice_1:
+            reglage.tube_bec_1 = Bec.objects.filter(id=bec_choice_1).first()
+        else:
+            reglage.tube_bec_1 = None
+
+      
+        
+
+
 
         # OF précédent / lavage
         of_precedent_id = request.POST.get("of_precedent")
@@ -128,6 +219,53 @@ def edit_reglage(request, reglage_id):
             if of_lavage_id else None
         )
         
+        godet_choice = request.POST.get("godet")
+        godet_new = request.POST.get("godet_new_value")
+
+        if godet_choice == "_new" and godet_new:
+            reglage.godet, _ = Godet.objects.get_or_create(valeur=godet_new.strip())
+        elif godet_choice:
+            reglage.godet = Godet.objects.filter(id=godet_choice).first()
+        else:
+            reglage.godet = None
+
+        for i in range(1, 5):
+            # Pompe (valeur select)
+            reglage.__setattr__(f"pompe_{i}", request.POST.get(f"pompe_{i}") or None)
+
+            # Valeur numérique
+            reglage.__setattr__(f"valeur_{i}", request.POST.get(f"valeur_{i}") or None)
+
+            cent_choice = request.POST.get(f"centerur_{i}")
+            cent_new = request.POST.get(f"centerur_{i}_new_value")
+
+            if cent_choice == "_new" and cent_new:
+                cent_obj, _ = Centreur.objects.get_or_create(valeur=cent_new.strip())
+                setattr(reglage, f"centerur_{i}", cent_obj)
+            elif cent_choice:
+                setattr(reglage, f"centerur_{i}_id", int(cent_choice))
+            else:
+                setattr(reglage, f"centerur_{i}", None)
+            # Motorisé (seulement 1,2,3)
+            if i <= 3:
+                reglage.__setattr__(f"motorise_{i}", parse_bool(request.POST.get(f"motorise_{i}")))
+
+            # BEC (table)
+            bec_choice = request.POST.get(f"tube_bec_{i}")
+            bec_new = request.POST.get(f"tube_bec_{i}_new_value")
+
+            if bec_choice == "_new" and bec_new:
+                bec_obj, _ = Bec.objects.get_or_create(valeur=bec_new.strip())
+                reglage.__setattr__(f"tube_bec_{i}", bec_obj)
+
+            elif bec_choice:
+                reglage.__setattr__(f"tube_bec_{i}", Bec.objects.filter(id=bec_choice).first())
+
+            else:
+                reglage.__setattr__(f"tube_bec_{i}", None)
+
+
+
         reglage.save()
         return redirect("detail_reglage", reglage_id=reglage.id)
 
@@ -139,6 +277,10 @@ def edit_reglage(request, reglage_id):
         "mode": "edit",
         "godets": godets,
         "ofs": ofs,
+        "becs": Bec.objects.all().order_by("valeur"),
+        "pompes": pompes,
+        "centreurs": Centreur.objects.all().order_by("valeur"),
+        
     })
 
 

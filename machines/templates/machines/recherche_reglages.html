@@ -90,6 +90,7 @@
 {% if reglages %}
 <table>
     <tr>
+        <th>Date</th>
         <th>Référence</th>
         <th>Nom produit</th>
         <th>OF</th>
@@ -99,6 +100,7 @@
 
     {% for r in reglages %}
     <tr>
+        <td><a class="rowlink" href="{% url 'detail_reglage' r.id %}">{{ r.date_reglage|date:'Y-m-d' }}</a></td>
         <td><a class="rowlink" href="{% url 'detail_reglage' r.id %}">{{ r.ref }}</a></td>
         <td><a class="rowlink" href="{% url 'detail_reglage' r.id %}">{{ r.nom_produit }}</a></td>
         <td><a class="rowlink" href="{% url 'detail_reglage' r.id %}">{{ r.numeros_of }}</a></td>
