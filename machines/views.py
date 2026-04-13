@@ -1,39 +1,38 @@
+import uuid
 from django.shortcuts import render, get_object_or_404, redirect
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseRedirect
 from django.contrib.auth.decorators import login_required, permission_required
+from django.urls import reverse
+from django.utils import timezone
+from django.db import IntegrityError
 
 from machines.models import (
-    ReglageEKO, Godet, Bec, Centreur, Bute, Pince, PinceF
+    ReglageEKO, Godet, Bec, Centreur, Bute, Pince, PinceF, Vrac
 )
-
 
 # ============================================================
 # Helpers
 # ============================================================
 
+def clean(v):
+    return "" if v is None else str(v).strip()
+
 def to_float(v):
-    """Convertit une saisie en float ou None (vide -> None, virgule -> point)."""
-    v = (v or "").strip()
-    if v == "":
+    v = clean(v)
+    if v == "" or v.lower() in ("nc", "n/c"):
         return None
     try:
         return float(v.replace(",", "."))
     except ValueError:
         return None
 
-
 def handle_fk_select(request, obj, *, field, model, new_field):
     """
     Gère un champ FK alimenté par :
-    - <select name="field"> avec value = id ou "_new" ou ""
-    - <input name="new_field"> pour créer un nouvel objet (model(valeur=...))
+    - <select name="field"> value = id / "_new" / ""
+    - <input  name="new_field"> valeur à créer (model(valeur=...))
 
-    Exemples:
-      handle_fk_select(request, reglage, field="godet", model=Godet, new_field="godet_new_value")
-      handle_fk_select(request, reglage, field="butee_vis", model=Bute, new_field="butee_vis_new_value")
-      handle_fk_select(request, reglage, field="pince_vis", model=Pince, new_field="pince_vis_new_value")
-      handle_fk_select(request, reglage, field="tube_bec_1", model=Bec, new_field="tube_bec_1_new_value")
-      handle_fk_select(request, reglage, field="centerur_2", model=Centreur, new_field="centerur_2_new_value")
+    Assigne via field_id pour éviter : "must be a <Model> instance".
     """
     choice = request.POST.get(field)
     new_val = request.POST.get(new_field)
@@ -44,63 +43,206 @@ def handle_fk_select(request, obj, *, field, model, new_field):
         return
 
     if choice:
-        # IMPORTANT : on assigne l'ID dans *_id pour éviter "must be an instance"
         setattr(obj, f"{field}_id", int(choice))
     else:
         setattr(obj, field, None)
 
-
 def build_pompes(reglage: ReglageEKO):
-    # Attention : dans ton modèle actuel, centerur_4 est un CharField (pas FK). [1](https://bricotechnique-my.sharepoint.com/personal/tristanhudreaux_bricotechnique_onmicrosoft_com/Documents/Fichiers%20Microsoft%20Copilot%20Chat/models.py)
-    # On le met tel quel dans la structure. Si tu le passes en FK, ce code fonctionne aussi.
+    # P4 n'a pas motorise_4
     return [
         {"num": 1, "pompe": reglage.pompe_1, "valeur": reglage.valeur_1, "bec": reglage.tube_bec_1, "centerur": reglage.centerur_1, "motorise": reglage.motorise_1},
         {"num": 2, "pompe": reglage.pompe_2, "valeur": reglage.valeur_2, "bec": reglage.tube_bec_2, "centerur": reglage.centerur_2, "motorise": reglage.motorise_2},
         {"num": 3, "pompe": reglage.pompe_3, "valeur": reglage.valeur_3, "bec": reglage.tube_bec_3, "centerur": reglage.centerur_3, "motorise": reglage.motorise_3},
-        {"num": 4, "pompe": reglage.pompe_4, "valeur": reglage.valeur_4, "bec": reglage.tube_bec_4, "centerur": reglage.centerur_4, "motorise": None},
+        {"num": 4, "pompe": reglage.pompe_4, "valeur": reglage.valeur_4, "bec": reglage.tube_bec_4, "centerur": getattr(reglage, "centerur_4", None), "motorise": None},
     ]
 
+def is_blank_reglage(obj: ReglageEKO) -> bool:
+    """
+    Détecte un brouillon 'vide'. Ajuste si besoin.
+    """
+    def empty(s): return (s or "").strip() == ""
+    return (
+        (obj.ref or "").strip() in ("", "NOUVEAU")
+        and empty(obj.nom_produit)
+        and empty(obj.numeros_lot)
+        and empty(obj.regleur)
+        and empty(obj.observation)
+        and obj.date_reglage is None
+        and obj.volume is None
+        and obj.volume_demarrage is None
+        and empty(getattr(obj, "pompe_1", None))
+        and empty(getattr(obj, "pompe_2", None))
+        and empty(getattr(obj, "pompe_3", None))
+        and empty(getattr(obj, "pompe_4", None))
+        and getattr(obj, "valeur_1", None) is None
+        and getattr(obj, "valeur_2", None) is None
+        and getattr(obj, "valeur_3", None) is None
+        and getattr(obj, "valeur_4", None) is None
+    )
+
+def make_unique_of(of_value: str) -> str:
+    """
+    Si l'OF existe déjà, suffixe -COPY1, -COPY2, ...
+    """
+    base = of_value.strip()
+    if base == "":
+        return ""
+    if not ReglageEKO.objects.filter(numeros_of=base).exists():
+        return base
+    n = 1
+    while True:
+        cand = f"{base}-COPY{n}"
+        if not ReglageEKO.objects.filter(numeros_of=cand).exists():
+            return cand
+        n += 1
+
+def apply_post_to_reglage(request, obj: ReglageEKO):
+    """
+    Applique le formulaire sur obj (sauf numeros_of géré séparément).
+    """
+    # Champs simples
+    obj.ref = request.POST.get("ref", "")
+    obj.nom_produit = request.POST.get("nom_produit", "")
+    obj.numeros_lot = request.POST.get("numeros_lot", "")
+    obj.regleur = request.POST.get("regleur", "")
+    obj.observation = request.POST.get("observation", "")
+    obj.date_reglage = request.POST.get("date_reglage") or None
+
+    # Floats principaux
+    obj.volume = to_float(request.POST.get("volume"))
+    obj.volume_demarrage = to_float(request.POST.get("volume_demarrage"))
+
+    # Texte (si champ existe)
+    for f in [
+        "moussant", "ref_flacon", "programme", "filtre", "type_bec",
+        "ctrl_jus_h", "ctrl_jus_prof", "ctrl_ultra",
+        "presence_marteau", "embout",
+        "presence_visseuse", "visseuse",
+        "type_pince_ext", "type_pince_int",
+        "convoyeur", "cames_bec_on", "cames_bec_off",
+        "presence_cueilleur", "cueilleur", "cueilleur_1", "cueilleur_2", "cueilleur_3",
+        "etiquette", "consigne_etiquette", "etiqueteuse",
+    ]:
+        if hasattr(obj, f):
+            setattr(obj, f, request.POST.get(f, ""))
+
+    # Floats divers
+    for f in [
+        "h_machine", "h_compo_1", "h_marteau", "h_compo_2",
+        "couple_vis", "h_pince_ext", "h_pince_int",
+        "cadence", "h_finale", "hauteur_rail",
+    ]:
+        if hasattr(obj, f):
+            setattr(obj, f, to_float(request.POST.get(f)))
+
+    # FK self: OF précédent / lavage
+    of_precedent_id = request.POST.get("of_precedent")
+    obj.of_precedent_id = int(of_precedent_id) if of_precedent_id else None
+
+    of_lavage_id = request.POST.get("of_lavage")
+    obj.of_lavage_id = int(of_lavage_id) if of_lavage_id else None
+
+    # FK choix + nouveau
+    if hasattr(obj, "godet"):
+        handle_fk_select(request, obj, field="godet", model=Godet, new_field="godet_new_value")
+    if hasattr(obj, "butee_vis"):
+        handle_fk_select(request, obj, field="butee_vis", model=Bute, new_field="butee_vis_new_value")
+    if hasattr(obj, "pince_vis"):
+        handle_fk_select(request, obj, field="pince_vis", model=Pince, new_field="pince_vis_new_value")
+    if hasattr(obj, "pince_f"):
+        handle_fk_select(request, obj, field="pince_f", model=PinceF, new_field="pince_f_new_value")
+
+    # VRAC FK : on stocke uniquement le lien
+    if hasattr(obj, "vrac_ref_id"):
+        vrac_choice = request.POST.get("vrac_ref")
+        obj.vrac_ref_id = int(vrac_choice) if vrac_choice else None
+        if hasattr(obj, "vrac"):
+            obj.vrac = obj.vrac_ref.ref if obj.vrac_ref else ""
+
+    # Pompes 1..4
+    for i in range(1, 5):
+        if hasattr(obj, f"pompe_{i}"):
+            setattr(obj, f"pompe_{i}", request.POST.get(f"pompe_{i}") or None)
+        if hasattr(obj, f"valeur_{i}"):
+            setattr(obj, f"valeur_{i}", to_float(request.POST.get(f"valeur_{i}")))
+
+        # Becs
+        if hasattr(obj, f"tube_bec_{i}"):
+            handle_fk_select(request, obj, field=f"tube_bec_{i}", model=Bec, new_field=f"tube_bec_{i}_new_value")
+
+        # Centreurs (si centerur_4 est FK, ça marche aussi)
+        if hasattr(obj, f"centerur_{i}"):
+            handle_fk_select(request, obj, field=f"centerur_{i}", model=Centreur, new_field=f"centerur_{i}_new_value")
+
+        # motorise_1..3 = texte chez toi (si champ existe)
+        if i <= 3 and hasattr(obj, f"motorise_{i}"):
+            setattr(obj, f"motorise_{i}", request.POST.get(f"motorise_{i}", ""))
 
 # ============================================================
-# Delete
-# ============================================================
-
-@login_required
-@permission_required("machines.delete_reglageeko", raise_exception=True)
-def delete_reglage(request, reglage_id):
-    reglage = get_object_or_404(ReglageEKO, id=reglage_id)
-
-    if request.method == "POST":
-        reglage.delete()
-        return redirect("recherche_reglages")
-
-    return render(request, "machines/delete_confirm.html", {"reglage": reglage})
-
-
-# ============================================================
-# Create
+# Create / Cancel / Delete
 # ============================================================
 
 @login_required
 @permission_required("machines.add_reglageeko", raise_exception=True)
 def create_reglage(request):
-    # numeros_lot n'est pas blank dans ton modèle, on met une chaîne vide.
-    reglage = ReglageEKO.objects.create(
-        ref="NOUVEAU",
-        numeros_of=None,
-        numeros_lot="",
-        nom_produit="",
-    )
-    return redirect("edit_reglage", reglage_id=reglage.id)
+    """
+    Nouveau brouillon : OF NULL seulement si fiche vide.
+    ⚠️ Si ta DB force '' au lieu de NULL, on fallback sur DRAFT-...
+    """
+    try:
+        reglage = ReglageEKO.objects.create(
+            ref="NOUVEAU",
+            numeros_of=None,     # OF NULL
+            numeros_lot="",
+            nom_produit="",
+            date_reglage=timezone.localdate(),
+        )
+    except IntegrityError:
+        # Fallback si ta DB transforme None en '' (unique)
+        draft = f"DRAFT-{timezone.now():%Y%m%d%H%M%S}-{uuid.uuid4().hex[:6]}"
+        reglage = ReglageEKO.objects.create(
+            ref="NOUVEAU",
+            numeros_of=draft,
+            numeros_lot="",
+            nom_produit="",
+            date_reglage=timezone.localdate(),
+        )
 
+    url = reverse("edit_reglage", kwargs={"reglage_id": reglage.id})
+    return HttpResponseRedirect(f"{url}?new=1")
+
+@login_required
+@permission_required("machines.change_reglageeko", raise_exception=True)
+def cancel_new_reglage(request, reglage_id):
+    reglage = get_object_or_404(ReglageEKO, id=reglage_id)
+
+    # supprime seulement si c'est un brouillon vide
+    is_draft = (
+        reglage.ref == "NOUVEAU"
+        and (reglage.numeros_of is None or str(reglage.numeros_of).startswith("DRAFT-"))
+        and is_blank_reglage(reglage)
+    )
+    if is_draft:
+        reglage.delete()
+
+    return redirect("recherche_reglages")
+
+@login_required
+@permission_required("machines.delete_reglageeko", raise_exception=True)
+def delete_reglage(request, reglage_id):
+    reglage = get_object_or_404(ReglageEKO, id=reglage_id)
+    if request.method == "POST":
+        reglage.delete()
+        return redirect("recherche_reglages")
+    return render(request, "machines/delete_confirm.html", {"reglage": reglage})
 
 # ============================================================
-# Search
+# Recherche / Détail / Edit + Dupliquer
 # ============================================================
 
 @login_required
 def recherche_reglages(request):
-    reglages = ReglageEKO.objects.all().order_by("-date_reglage")
+    reglages = ReglageEKO.objects.all().order_by("-date_reglage", "-id")
 
     ref = request.GET.get("ref")
     nom = request.GET.get("nom")
@@ -121,150 +263,98 @@ def recherche_reglages(request):
 
     return render(request, "machines/recherche_reglages.html", {"reglages": reglages})
 
-
-# ============================================================
-# Detail (view mode)
-# ============================================================
-
 @login_required
 def detail_reglage(request, reglage_id):
     reglage = get_object_or_404(ReglageEKO, id=reglage_id)
 
-    return render(request, "machines/reglage_gabarit.html", {
+    context = {
         "reglage": reglage,
         "mode": "view",
         "pompes": build_pompes(reglage),
 
-        # listes utiles même en view (si ton template les référence)
-        "ofs": ReglageEKO.objects.exclude(id=reglage.id).order_by("numeros_of"),
+        "ofs": ReglageEKO.objects.exclude(id=reglage.id).order_by("-date_reglage", "-id"),
         "godets": Godet.objects.all().order_by("valeur"),
         "becs": Bec.objects.all().order_by("valeur"),
         "centreurs": Centreur.objects.all().order_by("valeur"),
         "butes": Bute.objects.all().order_by("valeur"),
         "pinces": Pince.objects.all().order_by("valeur"),
         "pincesf": PinceF.objects.all().order_by("valeur"),
-    })
-
-
-# ============================================================
-# Edit (edit mode)
-# ============================================================
+        "vracs": Vrac.objects.all().order_by("ref"),
+    }
+    return render(request, "machines/reglage_gabarit.html", context)
 
 @login_required
 @permission_required("machines.change_reglageeko", raise_exception=True)
 def edit_reglage(request, reglage_id):
     reglage = get_object_or_404(ReglageEKO, id=reglage_id)
 
-    ofs = ReglageEKO.objects.exclude(id=reglage.id).order_by("numeros_of")
+    ofs = ReglageEKO.objects.exclude(id=reglage.id).order_by("-date_reglage", "-id")
     godets = Godet.objects.all().order_by("valeur")
     becs = Bec.objects.all().order_by("valeur")
     centreurs = Centreur.objects.all().order_by("valeur")
     butes = Bute.objects.all().order_by("valeur")
     pinces = Pince.objects.all().order_by("valeur")
     pincesf = PinceF.objects.all().order_by("valeur")
+    vracs = Vrac.objects.all().order_by("ref")
 
     if request.method == "POST":
-        # -------------------------
-        # Champs simples (texte / date)
-        # -------------------------
-        reglage.ref = request.POST.get("ref", "")
-        reglage.nom_produit = request.POST.get("nom_produit", "")
-        reglage.numeros_lot = request.POST.get("numeros_lot", "")
-        reglage.regleur = request.POST.get("regleur", "")
-        reglage.observation = request.POST.get("observation", "")
-        reglage.date_reglage = request.POST.get("date_reglage") or None
+        # ✅ action existe toujours en POST
+        action = request.POST.get("action", "save")
 
-        # -------------------------
-        # Champs float (vide -> None)
-        # -------------------------
-        float_fields = [
-            "volume", "volume_demarrage",
-            "h_machine", "h_compo_1", "h_marteau", "h_compo_2",
-            "couple_vis", "h_pince_ext", "h_pince_int",
-            "cadence", "h_finale",
-            "hauteur_rail",
-            # pompes valeurs
-            "valeur_1", "valeur_2", "valeur_3", "valeur_4",
-        ]
-        for f in float_fields:
-            if hasattr(reglage, f):
-                setattr(reglage, f, to_float(request.POST.get(f)))
+        # ✅ target existe toujours (évite UnboundLocalError)
+        target = reglage
+        source_of = reglage.numeros_of  # OF original (utile en duplication)
 
-        # -------------------------
-        # Champs texte divers
-        # -------------------------
-        text_fields = [
-            "moussant", "ref_flacon", "programme", "filtre",
-            "type_bec", "ctrl_jus_h", "ctrl_jus_prof", "ctrl_ultra",
-            "presence_marteau", "embout",
-            "presence_visseuse", "visseuse",
-            "type_pince_ext", "type_pince_int",
-            "convoyeur", "cames_bec_on", "cames_bec_off",
-            "presence_cueilleur", "cueilleur", "cueilleur_1", "cueilleur_2", "cueilleur_3",
-            "etiquette", "consigne_etiquette", "etiqueteuse",
-            "vrac", "vrac_type", "vrac_pompe", "vrac_etuve", "vrac_temperature",
-            "vrac_rincage_eko", "vrac_circuit_ferme_microbio",
-            "vrac_commentaire", "vrac_labo_validation", "vrac_microbio_validation",
-        ]
-        for f in text_fields:
-            if hasattr(reglage, f):
-                setattr(reglage, f, request.POST.get(f, ""))
+        if action == "duplicate":
+            target = ReglageEKO()
+            # champs minimum non blank
+            target.ref = request.POST.get("ref", "COPIE")
+            target.numeros_lot = request.POST.get("numeros_lot", "")
+            target.nom_produit = request.POST.get("nom_produit", "")
+            # OF géré plus bas selon règles (souvent NULL)
 
-        # -------------------------
-        # FK self : OF précédent / lavage
-        # -------------------------
-        of_precedent_id = request.POST.get("of_precedent")
-        reglage.of_precedent_id = int(of_precedent_id) if of_precedent_id else None
+        # Applique le formulaire au bon objet
+        apply_post_to_reglage(request, target)
 
-        of_lavage_id = request.POST.get("of_lavage")
-        reglage.of_lavage_id = int(of_lavage_id) if of_lavage_id else None
+        # ==================================================
+        # RÈGLE OF :
+        # - NULL si fiche vide
+        # - en duplication : NULL si OF vide OU identique à l'original
+        # - sinon : si OF saisi, le garder (unique si conflit)
+        # - sinon : en save, ne pas écraser l’OF existant
+        # ==================================================
+        posted_of = clean(request.POST.get("numeros_of"))  # nécessite un input dans le template
 
-        # -------------------------
-        # FK "choix + nouveau" (factorisé)
-        # -------------------------
-        handle_fk_select(request, reglage, field="godet", model=Godet, new_field="godet_new_value")
-        handle_fk_select(request, reglage, field="butee_vis", model=Bute, new_field="butee_vis_new_value")
-        handle_fk_select(request, reglage, field="pince_vis", model=Pince, new_field="pince_vis_new_value")
-        handle_fk_select(request, reglage, field="pince_f", model=PinceF, new_field="pince_f_new_value")
+        if is_blank_reglage(target):
+            target.numeros_of = None
 
-        # -------------------------
-        # Pompes 1..4 : pompe / FK bec / FK centreur (factorisé)
-        # -------------------------
-        for i in range(1, 5):
-            if hasattr(reglage, f"pompe_{i}"):
-                setattr(reglage, f"pompe_{i}", request.POST.get(f"pompe_{i}") or None)
+        elif action == "duplicate" and (posted_of == "" or (source_of and posted_of == source_of)):
+            target.numeros_of = None
 
-            # Bec FK + _new
-            if hasattr(reglage, f"tube_bec_{i}"):
-                handle_fk_select(
-                    request, reglage,
-                    field=f"tube_bec_{i}",
-                    model=Bec,
-                    new_field=f"tube_bec_{i}_new_value"
-                )
+        elif posted_of != "":
+            target.numeros_of = make_unique_of(posted_of)
 
-          
-            if hasattr(reglage, f"centerur_{i}_id") or (i <= 3 and hasattr(reglage, f"centerur_{i}")):
-                # centerur_1/2/3 sont FK
-                if i <= 3:
-                    handle_fk_select(
-                        request, reglage,
-                        field=f"centerur_{i}",
-                        model=Centreur,
-                        new_field=f"centerur_{i}_new_value"
-                    )
-                else:
-                    # centerur_4 est texte -> on enregistre la valeur texte
-                    setattr(reglage, "centerur_4", request.POST.get("centerur_4_new_value") or request.POST.get("centerur_4") or None)
+        else:
+            # Save normal : ne pas écraser l’OF existant si champ laissé vide
+            if action == "duplicate":
+                target.numeros_of = None
+            # action == save -> on conserve celui existant
+            # (rien à faire)
 
-        reglage.save()
+        target.save()
+
+        # OPTION 2 : duplication -> détail de la copie
+        if action == "duplicate":
+            return redirect("detail_reglage", reglage_id=target.id)
+
         return redirect("detail_reglage", reglage_id=reglage.id)
 
     # GET
-    return render(request, "machines/reglage_gabarit.html", {
+    context = {
         "reglage": reglage,
         "mode": "edit",
         "pompes": build_pompes(reglage),
+
         "ofs": ofs,
         "godets": godets,
         "becs": becs,
@@ -272,11 +362,12 @@ def edit_reglage(request, reglage_id):
         "butes": butes,
         "pinces": pinces,
         "pincesf": pincesf,
-    })
-
+        "vracs": vracs,
+    }
+    return render(request, "machines/reglage_gabarit.html", context)
 
 # ============================================================
-# API autocomplete OF
+# API
 # ============================================================
 
 @login_required
@@ -285,3 +376,20 @@ def api_of_list(request):
     qs = ReglageEKO.objects.filter(numeros_of__icontains=term).order_by("numeros_of")
     data = [{"id": r.id, "of": r.numeros_of, "nom": r.nom_produit} for r in qs[:20]]
     return JsonResponse(data, safe=False)
+
+@login_required
+def api_vrac_detail(request, vrac_id):
+    v = get_object_or_404(Vrac, id=vrac_id)
+    return JsonResponse({
+        "id": v.id,
+        "ref": v.ref,
+        "Nom_vrac": v.Nom_vrac,
+        "vrac_type": v.vrac_type,
+        "pompe": v.pompe,
+        "etuve": v.etuve,
+        "temperature": v.temperature,
+        "circuit_ferme_microbio": v.circuit_ferme_microbio,
+        "commentaire": v.commentaire,
+        "labo_validation": v.labo_validation,
+        "microbio_validation": v.microbio_validation,
+    })

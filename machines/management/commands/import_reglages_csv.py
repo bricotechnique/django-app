@@ -8,8 +8,10 @@ from django.db import transaction
 from machines.models import (
     ReglageEKO,
     Godet, Bec, Centreur,
-    Bute, Pince, PinceF,
+    Bute, Pince, PinceF, Vrac,
 )
+
+
 
 # =========================
 # Helpers
@@ -271,20 +273,28 @@ class Command(BaseCommand):
                     reglage.consigne_etiquette = clean(row.get("Consigne Etiquette"))
                     reglage.etiqueteuse = clean(row.get("Etiqueteuse"))
 
-                    # -------------------------
-                    # VRAC
-                    # -------------------------
-                    reglage.vrac = clean(row.get("vrac"))
-                    reglage.vrac_type = clean(row.get("vrac: type vrac"))
-                    reglage.vrac_pompe = clean(row.get("vrac: Pompe"))
-                    reglage.vrac_etuve = clean(row.get("vrac: Etuve"))
-                    reglage.vrac_temperature = clean(row.get("vrac: T°C ambiante"))
-                    reglage.vrac_rincage_eko = clean(row.get("vrac: Rincage Eko"))
-                    reglage.vrac_circuit_ferme_microbio = clean(row.get("vrac: Circuit Fermé Microbio"))
-                    reglage.vrac_commentaire = clean(row.get("vrac: Commentaire"))
-                    reglage.vrac_labo_validation = clean(row.get("vrac: Labo validation"))
-                    reglage.vrac_microbio_validation = clean(row.get("vrac: Microbio validation"))
+                    
+                   # =========================
+                    # VRAC : on n'importe que la référence + lien FK si la fiche existe
+                    # =========================
+                    ref_vrac = clean(row.get("vrac"))  # colonne clé dans ton CSV
 
+                    # 1) garder la référence dans ReglageEKO.vrac (champ texte existant)
+                    reglage.vrac = ref_vrac
+
+                    # 2) lier à la table Vrac si le champ FK existe dans ton modèle
+                    if hasattr(reglage, "vrac_ref_id"):
+                        reglage.vrac_ref = Vrac.objects.filter(ref=ref_vrac).first() if ref_vrac else None
+
+                    # 3) optionnel : vider les champs VRAC "legacy" du réglage pour ne pas stocker de doublons
+                    # (utile si tu ne veux plus du tout ces colonnes dans ReglageEKO)
+                    for f in (
+                        "vrac_type", "vrac_pompe", "vrac_etuve", "vrac_temperature",
+                        "vrac_rincage_eko", "vrac_circuit_ferme_microbio", "vrac_commentaire",
+                        "vrac_labo_validation", "vrac_microbio_validation",
+                    ):
+                        if hasattr(reglage, f):
+                            setattr(reglage, f, "")
                     # -------------------------
                     # Liens OF précédent / lavage (2e passe)
                     # -------------------------

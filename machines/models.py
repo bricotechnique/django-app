@@ -1,6 +1,24 @@
 from django.db import models
 
 
+
+class Vrac(models.Model):
+    ref = models.CharField(max_length=50, unique=True, db_index=True)  # identifiant VRAC (clé)
+    vrac_type = models.CharField(max_length=50, blank=True)
+    pompe = models.CharField(max_length=50, blank=True)
+    etuve = models.CharField(max_length=50, blank=True)
+    temperature = models.CharField(max_length=50, blank=True)
+    Nom_vrac = models.CharField(max_length=50, blank=True)
+    circuit_ferme_microbio = models.CharField(max_length=10, blank=True)  # ou BooleanField si tu veux plus tard
+    commentaire = models.TextField(blank=True)
+    labo_validation = models.CharField(max_length=50, blank=True)
+    microbio_validation = models.CharField(max_length=50, blank=True)
+
+
+    def __str__(self):
+        return self.ref
+
+
 class Bec(models.Model):
     valeur = models.CharField(max_length=50, unique=True)
 
@@ -190,12 +208,14 @@ class ReglageEKO(models.Model):
     # =====================================================
     # VRAC (REFERENCE – LIAISON FUTURE)
     # =====================================================
+    vrac_ref = models.ForeignKey("Vrac", null=True, blank=True, on_delete=models.SET_NULL, related_name="reglages")
+
     vrac = models.CharField(max_length=10, blank=True)
+    vrac_Nom_vrac = models.CharField(max_length=10, blank=True)
     vrac_type = models.CharField(max_length=50, blank=True)
     vrac_pompe = models.CharField(max_length=50, blank=True)
     vrac_etuve = models.CharField(max_length=50, blank=True)
     vrac_temperature = models.CharField(max_length=50, blank=True)
-    vrac_rincage_eko = models.CharField(max_length=10, blank=True)
     vrac_circuit_ferme_microbio = models.CharField(max_length=10, blank=True)
     vrac_commentaire = models.TextField(blank=True)
 

@@ -60,6 +60,12 @@
         <button type="button" class="btn btn-cancel">↩ Annuler</button>
       </a>
       <button type="submit" name="mode" value="update" class="btn btn-save">✅ Enregistrer</button>
+   
+
+  <button type="submit" name="action" value="duplicate" class="btn btn-edit">
+  🧬 Dupliquer
+</button>
+
     {% else %}
       <a href="{% url 'edit_reglage' reglage.id %}">
         <button type="button" class="btn btn-edit">✏️ Modifier</button>
@@ -100,8 +106,16 @@
   </tr>
 
   <tr>
-    <th>OF</th>
-    <td>{{ reglage.numeros_of|default:"—" }}</td>
+    
+<th>OF</th>
+<td>
+  {% if mode == "edit" %}
+    <input type="text" name="numeros_of" value="{{ reglage.numeros_of|default:'' }}" maxlength="100">
+  {% else %}
+    {{ reglage.numeros_of|default:"—" }}
+  {% endif %}
+</td>
+
 
     <th>Lot</th>
     <td>
@@ -657,110 +671,70 @@
 <!-- VRAC -->
 <!-- ===================================================== -->
 <h2>Vrac</h2>
-<table>
-  <tr>
-    <th>Vrac</th>
-    <td>
-      {% if mode == "edit" %}
-        <input type="text" name="vrac" value="{{ reglage.vrac|default:'' }}" maxlength="80">
-      {% else %}
-        {{ reglage.vrac|default:"—" }}
-      {% endif %}
-    </td>
-
-    <th>Type vrac</th>
-    <td>
-      {% if mode == "edit" %}
-        <input type="text" name="vrac_type" value="{{ reglage.vrac_type|default:'' }}" maxlength="80">
-      {% else %}
-        {{ reglage.vrac_type|default:"—" }}
-      {% endif %}
-    </td>
-
-    <th>Pompe vrac</th>
-    <td>
-      {% if mode == "edit" %}
-        <input type="text" name="vrac_pompe" value="{{ reglage.vrac_pompe|default:'' }}" maxlength="80">
-      {% else %}
-        {{ reglage.vrac_pompe|default:"—" }}
-      {% endif %}
-    </td>
-
-    <th>Etuve</th>
-    <td>
-      {% if mode == "edit" %}
-        <input type="text" name="vrac_etuve" value="{{ reglage.vrac_etuve|default:'' }}" maxlength="80">
-      {% else %}
-        {{ reglage.vrac_etuve|default:"—" }}
-      {% endif %}
-    </td>
-  </tr>
-
-  <tr>
-    <th>T°C ambiante</th>
-    <td>
-      {% if mode == "edit" %}
-        <input type="text" name="vrac_temperature" value="{{ reglage.vrac_temperature|default:'' }}" maxlength="50">
-      {% else %}
-        {{ reglage.vrac_temperature|default:"—" }}
-      {% endif %}
-    </td>
-
-    <th>Rincage Eko</th>
-    <td>
-      {% if mode == "edit" %}
-        <input type="text" name="vrac_rincage_eko" value="{{ reglage.vrac_rincage_eko|default:'' }}" maxlength="50">
-      {% else %}
-        {{ reglage.vrac_rincage_eko|default:"—" }}
-      {% endif %}
-    </td>
-
-    <th>Circuit fermé microbio</th>
-    <td>
-      {% if mode == "edit" %}
-        <input type="text" name="vrac_circuit_ferme_microbio" value="{{ reglage.vrac_circuit_ferme_microbio|default:'' }}" maxlength="50">
-      {% else %}
-        {{ reglage.vrac_circuit_ferme_microbio|default:"—" }}
-      {% endif %}
-    </td>
-
-    <th>Commentaire</th>
-    <td>
-      {% if mode == "edit" %}
-        <input type="text" name="vrac_commentaire" value="{{ reglage.vrac_commentaire|default:'' }}" maxlength="200">
-      {% else %}
-        {{ reglage.vrac_commentaire|default:"—" }}
-      {% endif %}
-    </td>
-  </tr>
-
-  <tr>
-    <th>Validation labo</th>
-    <td>
-      {% if mode == "edit" %}
-        <input type="text" name="vrac_labo_validation" value="{{ reglage.vrac_labo_validation|default:'' }}" maxlength="50">
-      {% else %}
-        {{ reglage.vrac_labo_validation|default:"—" }}
-      {% endif %}
-    </td>
-
-    <th>Validation microbio</th>
-    <td>
-      {% if mode == "edit" %}
-        <input type="text" name="vrac_microbio_validation" value="{{ reglage.vrac_microbio_validation|default:'' }}" maxlength="50">
-      {% else %}
-        {{ reglage.vrac_microbio_validation|default:"—" }}
-      {% endif %}
-    </td>
-
-    <th></th><td class="dash">—</td>
-    <th></th><td class="dash">—</td>
-  </tr>
-</table>
 
 {% if mode == "edit" %}
-</form>
+  <div style="margin-bottom:10px;">
+    <label style="font-weight:bold;">Choisir une fiche VRAC :</label><br>
+    <select name="vrac_ref" class="wide-select">
+      <option value="">---</option>
+      {% for v in vracs %}
+        <option value="{{ v.id }}"
+          {% if reglage.vrac_ref and reglage.vrac_ref.id == v.id %}selected{% endif %}>
+          {{ v.ref }} — {{ v.Nom_vrac }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
 {% endif %}
+
+<table>
+ <tr> 
+  <th>Commentaire</th>
+    <td id="vrac_ref">{% if reglage.vrac_ref %}{{ reglage.vrac_ref.commentaire }}{% else %}—{% endif %}</td>
+  </tr>
+</table>
+<table>
+<tr>
+  <th>Réf VRAC</th>
+  <td id="vrac_ref">{% if reglage.vrac_ref %}{{ reglage.vrac_ref.ref }}{% else %}—{% endif %}</td>
+
+  <th>Nom vrac</th>
+  <td id="vrac_nom">{% if reglage.vrac_ref %}{{ reglage.vrac_ref.Nom_vrac }}{% else %}—{% endif %}</td>
+</tr>
+
+
+  <tr>
+    <th>Type</th>
+    <td id="vrac_ref">{% if reglage.vrac_ref %}{{ reglage.vrac_ref.vrac_type }}{% else %}—{% endif %}</td>
+
+    <th>Pompe</th>
+    <td id="vrac_ref">{% if reglage.vrac_ref %}{{ reglage.vrac_ref.pompe }}{% else %}—{% endif %}</td>
+  </tr>
+
+  <tr>
+    <th>Etuve</th>
+    <td id="vrac_ref">{% if reglage.vrac_ref %}{{ reglage.vrac_ref.etuve }}{% else %}—{% endif %}</td>
+
+    <th>T°</th>
+    <td id="vrac_ref">{% if reglage.vrac_ref %}{{ reglage.vrac_ref.temperature }}{% else %}—{% endif %}</td>
+  </tr>
+
+  <tr>
+    <th>Circuit fermé microbio</th>
+    <td id="vrac_ref">{% if reglage.vrac_ref %}{{ reglage.vrac_ref.circuit_ferme_microbio }}{% else %}—{% endif %}</td>
+
+    <th>Validation labo</th>
+    <td id="vrac_ref">{% if reglage.vrac_ref %}{{ reglage.vrac_ref.labo_validation }}{% else %}—{% endif %}</td>
+  </tr>
+
+  <tr>
+    <th>Validation microbio</th>
+    <td id="vrac_ref">{% if reglage.vrac_ref %}{{ reglage.vrac_ref.microbio_validation }}{% else %}—{% endif %}</td>
+
+    
+  </tr>
+
+</table>
 
 <!-- ===================================================== -->
 <!-- JS GLOBAL : affiche input si _new -->
@@ -850,6 +824,70 @@ document.addEventListener("DOMContentLoaded", () => {
 
 });
 </script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const sel = document.querySelector('select[name="vrac_ref"]');
+  if (!sel) return;
+
+  const setText = (id, value) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = (value && String(value).trim() !== "") ? value : "—";
+  };
+
+  const clearVrac = () => {
+    setText("vrac_ref", "");
+    setText("vrac_nom", "");
+    setText("vrac_type", "");
+    setText("vrac_pompe", "");
+    setText("vrac_etuve", "");
+    setText("vrac_temperature", "");
+    setText("vrac_cfm", "");
+    setText("vrac_labo", "");
+    setText("vrac_microbio", "");
+    setText("vrac_commentaire", "");
+  };
+
+  const loadVrac = async (id) => {
+    try {
+      const res = await fetch(`/api/vrac/${id}/`, { headers: { "Accept": "application/json" } });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+
+      setText("vrac_ref", data.ref);
+      setText("vrac_nom", data.Nom_vrac);
+      setText("vrac_type", data.vrac_type);
+      setText("vrac_pompe", data.pompe);
+      setText("vrac_etuve", data.etuve);
+      setText("vrac_temperature", data.temperature);
+      setText("vrac_cfm", data.circuit_ferme_microbio);
+      setText("vrac_labo", data.labo_validation);
+      setText("vrac_microbio", data.microbio_validation);
+      setText("vrac_commentaire", data.commentaire);
+
+    } catch (e) {
+      console.error("Erreur chargement VRAC:", e);
+      clearVrac();
+    }
+  };
+
+  sel.addEventListener("change", () => {
+    const id = sel.value;
+    if (!id) {
+      clearVrac();
+      return;
+    }
+    if (id === "_new") {
+      // au cas où tu ajoutes un "_new" (mais normalement VRAC n’est pas créé ici)
+      clearVrac();
+      return;
+    }
+    loadVrac(id);
+  });
+});
+</script>
+
 
 </body>
 </html>

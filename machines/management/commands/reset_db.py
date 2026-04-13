@@ -1,6 +1,10 @@
-from machines.models import ReglageEKO, Godet, Bec, Centreur
+from machines.models import ReglageEKO, Godet, Bec, Centreur, Bute, Pince, PinceF, Vrac
 ReglageEKO.objects.all().delete()
 Godet.objects.all().delete()
 Bec.objects.all().delete()
 Centreur.objects.all().delete()
+Bute.objects.all().delete()
+Pince.objects.all().delete()
+PinceF.objects.all().delete()
+Vrac.objects.all().delete()
 exit()

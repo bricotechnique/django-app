@@ -39,15 +39,7 @@
 
         <!-- Actions -->
         <div>
-            {% if perms.machines.add_reglageeko %}
-                <a href="{% url 'create_reglage' %}">
-                    <button style="padding:8px 12px;">
-                        ➕ Nouveau réglage
-                    </button>
-                </a>
-            {% endif %}
-
-            <!-- Logout POST (Django 6) -->
+                        <!-- Logout POST (Django 6) -->
             <form action="{% url 'logout' %}" method="post" style="display:inline;">
                 {% csrf_token %}
                 <button type="submit" style="padding:8px 12px;">
@@ -81,6 +73,13 @@
     <input type="text" name="volume"><br><br>
 
     <button type="submit">Rechercher</button>
+    
+{% if perms.machines.add_reglageeko %}
+  <a href="{% url 'create_reglage' %}">
+    <button type="button" class="btn btn-edit">➕ Nouveau réglage</button>
+  </a>
+{% endif %}
+
 </form>
 
 <hr>

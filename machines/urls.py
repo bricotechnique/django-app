@@ -1,5 +1,5 @@
 from django.urls import path
-
+from . import views
 from .views import (
     recherche_reglages,
     detail_reglage,
@@ -10,13 +10,19 @@ from .views import (
 )
 
 
-urlpatterns = [
-    path("", recherche_reglages, name="home"),
-    path("recherche/", recherche_reglages, name="recherche_reglages"),
 
-    path("reglage/<int:reglage_id>/", detail_reglage, name="detail_reglage"),
-    path("reglage/<int:reglage_id>/edit/", edit_reglage, name="edit_reglage"),
-    path("reglage/<int:reglage_id>/delete/", delete_reglage, name="delete_reglage"),
-    path("reglage/new/", create_reglage, name="create_reglage"),
-    path("api/of/", api_of_list, name="api_of_list"),
+
+urlpatterns = [
+    path("recherche/", views.recherche_reglages, name="recherche_reglages"),
+
+    path("reglage/new/", views.create_reglage, name="create_reglage"),
+    path("reglage/<int:reglage_id>/", views.detail_reglage, name="detail_reglage"),
+    path("reglage/<int:reglage_id>/edit/", views.edit_reglage, name="edit_reglage"),
+    path("reglage/<int:reglage_id>/delete/", views.delete_reglage, name="delete_reglage"),
+    path("reglage/<int:reglage_id>/cancel/", views.cancel_new_reglage, name="cancel_new_reglage"),
+
+    path("api/of/", views.api_of_list, name="api_of_list"),
+
+    # ✅ API VRAC (celle pour remonter les infos instantanément)
+    path("api/vrac/<int:vrac_id>/", views.api_vrac_detail, name="api_vrac_detail"),
 ]
