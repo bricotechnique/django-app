@@ -5,10 +5,18 @@ from django.contrib.auth.decorators import login_required, permission_required
 from django.urls import reverse
 from django.utils import timezone
 from django.db import IntegrityError
+from django.views.decorators.http import require_GET
+from django.utils.html import escape
+from django.db.models import F
+
+
+
 
 from machines.models import (
     ReglageEKO, Godet, Bec, Centreur, Bute, Pince, PinceF, Vrac
 )
+
+
 
 # ============================================================
 # Helpers
@@ -178,6 +186,82 @@ def apply_post_to_reglage(request, obj: ReglageEKO):
         if i <= 3 and hasattr(obj, f"motorise_{i}"):
             setattr(obj, f"motorise_{i}", request.POST.get(f"motorise_{i}", ""))
 
+ #Historique
+
+@require_GET
+@login_required
+def api_history_by_ref(request, ref):
+    ref = ref.strip()
+    if not ref:
+        return JsonResponse({"ref": "", "items": []})
+
+    qs = (
+        ReglageEKO.objects
+        .filter(ref=ref)
+        .order_by(F("date_reglage").desc(nulls_last=True), F("id").desc())
+        .values(
+            "id", "numeros_of", "numeros_lot", "nom_produit", "date_reglage",
+            "regleur", "volume_demarrage", "cadence", "observation"
+        )
+    )
+
+    # JSON serialisable: date -> str
+    items = []
+    for r in qs:
+        items.append({
+            "id": r["id"],
+            "numeros_of": r["numeros_of"] or "",
+            "numeros_lot": r["numeros_lot"] or "",
+            "nom_produit": r["nom_produit"] or "",
+            "date_reglage": r["date_reglage"].isoformat() if r["date_reglage"] else "",
+            "regleur": r["regleur"] or "",
+            "volume_demarrage": r["volume_demarrage"],
+            "cadence": r["cadence"],
+            "observation": r["observation"]
+        })
+
+    return JsonResponse({"ref": ref, "items": items})
+
+#historique vrac
+
+@require_GET
+@login_required
+def api_vrac_usage(request, vrac_id):
+    qs = (
+        ReglageEKO.objects
+        .filter(vrac_ref_id=vrac_id)
+        .order_by(F("date_reglage").desc(nulls_last=True), F("id").desc())
+        .values(
+            "id",
+            "ref",
+            "numeros_of",
+            "numeros_lot",
+            "nom_produit",
+            "date_reglage",
+            "regleur",
+            "volume",
+        )
+    )
+
+    items = []
+    for r in qs:
+        items.append({
+            "id": r["id"],
+            "ref": r["ref"] or "",
+            "numeros_of": r["numeros_of"] or "",
+            "numeros_lot": r["numeros_lot"] or "",
+            "nom_produit": r["nom_produit"] or "",
+            "date_reglage": r["date_reglage"].isoformat() if r["date_reglage"] else "",
+            "regleur": r["regleur"] or "",
+            "volume": r["volume"],
+        })
+
+    return JsonResponse({
+        "vrac_id": vrac_id,
+        "count": len(items),
+        "items": items,
+    })
+
 # ============================================================
 # Create / Cancel / Delete
 # ============================================================
@@ -331,9 +415,12 @@ def edit_reglage(request, reglage_id):
         elif action == "duplicate" and (posted_of == "" or (source_of and posted_of == source_of)):
             target.numeros_of = None
 
-        elif posted_of != "":
+        elif posted_of != "" and action == "duplicate":
             target.numeros_of = make_unique_of(posted_of)
 
+        elif posted_of != "" and action == "save":
+            # ✅ édition normale : on garde exactement l’OF saisi
+            target.numeros_of = posted_of
         else:
             # Save normal : ne pas écraser l’OF existant si champ laissé vide
             if action == "duplicate":

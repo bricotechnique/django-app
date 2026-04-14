@@ -6,32 +6,345 @@
   <title>Réglage {{ reglage.numeros_of|default:"(sans OF)" }}</title>
 
   <style>
-    body { font-family: Arial; }
-    h2 { margin-top: 30px; border-bottom: 2px solid #999; padding-bottom: 5px; }
-    table { border-collapse: collapse; width: 100%; margin-top: 10px; }
-    th, td { border: 1px solid #ccc; padding: 6px; vertical-align: top; }
-    th { background: #eee; }
+/* ============================================================
+   🌊 THALGO – DARK MARINE THEME
+   Application métier – Recherche & Réglages
+   ============================================================ */
 
-    input[type="text"], textarea, select { width: 220px; padding: 4px; }
-    textarea { resize: vertical; }
+/* =========================
+   VARIABLES
+   ========================= */
+:root {
+  /* Fonds */
+  --bg-main: #0b1f2a;
+  --bg-header: #0e2735;
+  --bg-card: #102b3a;
+  --bg-card-soft: #14394d;
+  --bg-hover: #163f55;
 
-    #observation { width: 100%; max-width: 1000px; height: 120px; }
+  /* Couleurs Thalgo-like */
+  --brand-primary: #4fb3b8;
+  --brand-secondary: #1c4f66;
+  --brand-accent: #7fd9d6;
 
-    .btn { padding: 8px 12px; cursor: pointer; margin-right: 8px; border: none; }
-    .btn-save { background: #4CAF50; color: white; }
-    .btn-edit { background: #2196F3; color: white; }
-    .btn-cancel { background: #ccc; }
-    .btn-delete { background: #d9534f; color: white; }
-    .btn-small { padding: 6px 10px; font-size: 13px; }
+  /* Texte */
+  --text-main: #e6f2f6;
+  --text-muted: #9fb7c3;
 
-    .dash { color: #888; }
-    .small-input { width: 120px; }
-    .wide-select { width: 260px; }
+  /* UI */
+  --border-soft: rgba(255,255,255,.08);
+  --radius: 8px;
+  --radius-lg: 14px;
+  --shadow-soft: 0 8px 24px rgba(0,0,0,.35);
+}
+
+/* =========================
+   BASE
+   ========================= */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg-main);
+  color: var(--text-main);
+  font-family: "Inter", "Segoe UI", Arial, sans-serif;
+  font-size: 14px;
+}
+
+a {
+  color: var(--brand-accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* =========================
+   HEADER STICKY
+   ========================= */
+.reglage-header {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background: linear-gradient(180deg, #0e2735 0%, #0b1f2a 100%);
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-soft);
+}
+
+/* =========================
+   CARTES / SECTIONS
+   ========================= */
+.card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  box-shadow: var(--shadow-soft);
+  margin-bottom: 22px;
+}
+
+.card h2 {
+  margin: 0 0 12px 0;
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--brand-primary);
+  border-bottom: 1px solid var(--border-soft);
+  padding-bottom: 6px;
+}
+
+/* =========================
+   FORMULAIRES
+   ========================= */
+label {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+input,
+select,
+textarea {
+  background: #0e3346;
+  color: var(--text-main);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  padding: 6px 8px;
+  width: 100%;
+}
+
+input::placeholder {
+  color: var(--text-muted);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 2px rgba(79,179,184,.25);
+}
+
+/* =========================
+   BOUTONS
+   ========================= */
+.btn {
+  padding: 8px 14px;
+  border-radius: var(--radius);
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all .2s ease;
+}
+
+.btn-save {
+  background: var(--brand-primary);
+  color: #052026;
+}
+
+.btn-edit {
+  background: var(--brand-secondary);
+  color: var(--text-main);
+}
+
+.btn-delete {
+  background: #9c2f2f;
+  color: white;
+}
+
+.btn-small {
+  padding: 4px 8px;
+  font-size: 13px;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+}
+
+/* =========================
+   TABLEAUX (Recherche / Historique)
+   ========================= */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+th {
+  background: var(--bg-card-soft);
+  color: var(--brand-primary);
+  font-size: 12px;
+  letter-spacing: .4px;
+  padding: 8px;
+  text-align: left;
+}
+
+td {
+  padding: 8px;
+  border-top: 1px solid var(--border-soft);
+}
+
+tr:hover {
+  background: var(--bg-hover);
+}
+
+/* =========================
+   RECHERCHE (FORMULAIRE 2 LIGNES)
+   ========================= */
+.search-form {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(160px, 1fr)) auto;
+  gap: 14px 16px;
+  align-items: end;
+}
+
+.search-form .field {
+  display: flex;
+  flex-direction: column;
+}
+
+.search-form .actions {
+  display: flex;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+/* =========================
+   VRAC SEARCH (FILTRÉ)
+   ========================= */
+#vracSearch {
+  background: #0e3346;
+  border: 1px solid var(--border-soft);
+  color: var(--text-main);
+}
+
+#vracSelect {
+  background: #0e3346;
+}
+
+#vracSelect option {
+  background: #0e3346;
+}
+
+/* =========================
+   MODALES (Historique / VRAC)
+   ========================= */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.65);
+  z-index: 9999;
+}
+
+.modal-content {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  padding: 16px;
+}
+
+/* =========================
+   LIGNES CLIQUABLES
+   ========================= */
+.history-row,
+.vrac-usage-row {
+  cursor: pointer;
+}
+
+.history-row:hover,
+.vrac-usage-row:hover {
+  background: var(--bg-hover);
+}
+
+/* =========================
+   UTILITAIRES
+   ========================= */
+.text-muted {
+  color: var(--text-muted);
+}
+
+.mt-1 { margin-top: 8px; }
+.mt-2 { margin-top: 16px; }
+.mt-3 { margin-top: 24px; }
+
+/* ============================================================
+   🌙 HISTORIQUE – VERSION SOMBRE CONFORT VISUEL
+   ============================================================ */
+
+/* Fond de la popup */
+.modal,
+#historyModal,
+#vracUsageModal {
+  background: rgba(5, 15, 20, 0.75); /* plus sombre, moins agressif */
+}
+
+/* Contenu de la popup */
+.modal-content,
+#historyModal > div,
+#vracUsageModal > div {
+  background: #0f2a38; /* plus sombre que les cartes */
+  color: var(--text-main);
+  box-shadow: 0 10px 30px rgba(0,0,0,.6);
+}
+
+/* Titre */
+#historyModal h3,
+#vracUsageModal h3 {
+  color: var(--brand-accent);
+}
+
+/* =========================
+   TABLE HISTORIQUE
+   ========================= */
+#historyModal table,
+#vracUsageModal table {
+  background: #0f2a38;
+}
+
+/* En-têtes */
+#historyModal th,
+#vracUsageModal th {
+  background: #14394d;       /* ✅ fini le gris/blanc */
+  color: var(--brand-primary);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+/* Cellules */
+#historyModal td,
+#vracUsageModal td {
+  background: transparent;
+  color: var(--text-main);
+  border-top: 1px solid var(--border-soft);
+}
+
+/* Lignes */
+#historyModal tr,
+#vracUsageModal tr {
+  transition: background .15s ease;
+}
+
+/* Hover doux */
+#historyModal tr:hover,
+#vracUsageModal tr:hover {
+  background: #163f55;
+}
+
+/* Ligne cliquable */
+.history-row,
+.vrac-usage-row {
+  cursor: pointer;
+}
+
   </style>
 </head>
 
 <body>
-
+<div class="reglage-header">
 <!-- LOGOUT (form séparé, jamais imbriqué) -->
 <form method="post" action="{% url 'logout' %}" style="display:inline;">
   {% csrf_token %}
@@ -79,6 +392,7 @@
     </a>
   {% endif %}
 </div>
+</div>
 
 <!-- ===================================================== -->
 <!-- INFORMATIONS PRINCIPALES -->
@@ -86,15 +400,40 @@
 <h2>Informations principales</h2>
 <table>
   <tr>
-    <th>Référence</th>
+        <th>Référence</th>
     <td>
       {% if mode == "edit" %}
         <input type="text" name="ref" value="{{ reglage.ref|default:'' }}" maxlength="50">
       {% else %}
         {{ reglage.ref|default:"—" }}
       {% endif %}
-    </td>
 
+      {% if reglage.ref %}
+        <button type="button"
+                class="btn btn-small"
+                id="btnHistoryRef"
+                data-ref="{{ reglage.ref|escape }}">
+          🕘 Historique
+        </button>
+      {% endif %}
+    </td>
+    <tr>
+      <th>Réf VRAC</th>
+      <td id="vrac_ref">{% if reglage.vrac_ref %}{{ reglage.vrac_ref.ref }}{% else %}—{% endif %}{% if reglage.vrac_ref %}
+  <button type="button"
+          class="btn btn-small"
+          id="btnVracUsage"
+          data-vrac-id="{{ reglage.vrac_ref.id }}"
+          data-vrac-ref="{{ reglage.vrac_ref.ref }}">
+    🧾 Utilisation VRAC
+  </button>
+{% endif %}</td>
+
+      <th>Nom vrac</th>
+      <td id="vrac_nom">{% if reglage.vrac_ref %}{{ reglage.vrac_ref.Nom_vrac }}{% else %}—{% endif %}</td>
+       
+    </tr>
+ 
     <th>Nom produit</th>
     <td>
       {% if mode == "edit" %}
@@ -673,20 +1012,36 @@
 <h2>Vrac</h2>
 
 {% if mode == "edit" %}
-  <div style="margin-bottom:10px;">
-    <label style="font-weight:bold;">Choisir une fiche VRAC :</label><br>
-    <select name="vrac_ref" class="wide-select">
-      <option value="">---</option>
-      {% for v in vracs %}
-        <option value="{{ v.id }}"
-          {% if reglage.vrac_ref and reglage.vrac_ref.id == v.id %}selected{% endif %}>
-          {{ v.ref }} — {{ v.Nom_vrac }}
-        </option>
-      {% endfor %}
-    </select>
-  </div>
-{% endif %}
+ <div style="margin-bottom:6px;">
+  <input type="text"
+         id="vracSearch"
+         placeholder="Rechercher un VRAC (réf ou nom)…"
+         style="width:260px; padding:4px;">
+</div>
 
+<select name="vrac_ref"
+        id="vracSelect"
+        class="wide-select"
+        size="6">  {# size optionnel pour meilleur confort #}
+  <option value="">---</option>
+  {% for v in vracs %}
+    <option value="{{ v.id }}"
+            data-ref="{{ v.ref|lower }}"
+            data-nom="{{ v.Nom_vrac|default:''|lower }}">
+      {{ v.ref }} — {{ v.Nom_vrac }}
+    </option>
+  {% endfor %}
+</select>
+{% endif %}
+{% if reglage.vrac_ref %}
+  <button type="button"
+          class="btn btn-small"
+          id="btnVracUsage"
+          data-vrac-id="{{ reglage.vrac_ref.id }}"
+          data-vrac-ref="{{ reglage.vrac_ref.ref }}">
+    🧾 Utilisation VRAC
+  </button>
+{% endif %}
 <table>
  <tr> 
   <th>Commentaire</th>
@@ -735,11 +1090,78 @@
   </tr>
 
 </table>
+<!-- ========================= -->
+<!-- MODAL HISTORIQUE REF -->
+<!-- ========================= -->
+<div id="historyModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:9999;">
+  <div style="background:#fff; width:min(1000px, 92vw); max-height:85vh; overflow:auto; margin:6vh auto; padding:16px; border-radius:8px;">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+      <h3 style="margin:0;">Historique — Réf: <span id="historyRefLabel"></span></h3>
+      <button type="button" class="btn btn-cancel btn-small" id="historyClose">✖ Fermer</button>
+    </div>
 
+    <div id="historyStatus" style="margin:10px 0; color:#666;"></div>
+
+    <table style="width:100%; border-collapse:collapse;">
+      <thead>
+        <tr>
+          <th style="border:1px solid #ccc; padding:6px; background:#eee;">Date</th>
+          <th style="border:1px solid #ccc; padding:6px; background:#eee;">OF</th>
+          <th style="border:1px solid #ccc; padding:6px; background:#eee;">Lot</th>
+          <th style="border:1px solid #ccc; padding:6px; background:#eee;">Régleur</th>
+          <th style="border:1px solid #ccc; padding:6px; background:#eee;">Vol. départ</th>
+          <th style="border:1px solid #ccc; padding:6px; background:#eee;">cad.</th>
+          <th style="border:1px solid #ccc; padding:6px; background:#eee;">obs.</th>
+        </tr>
+      </thead>
+      <tbody id="historyBody">
+        <!-- rempli en JS -->
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ========================= -->
+<!-- MODAL UTILISATION VRAC -->
+<!-- ========================= -->
+<div id="vracUsageModal"
+     style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:9999;">
+  <div style="background:#fff; width:min(1000px,92vw); max-height:85vh;
+              overflow:auto; margin:6vh auto; padding:16px; border-radius:8px;">
+
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <h3 style="margin:0;">
+        Utilisation du VRAC —
+        <span id="vracUsageRef"></span>
+      </h3>
+      <button type="button"
+              class="btn btn-cancel btn-small"
+              id="vracUsageClose">✖ Fermer</button>
+    </div>
+
+    <div id="vracUsageStatus" style="margin:10px 0; color:#666;"></div>
+
+    <table style="width:100%; border-collapse:collapse;">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Réf réglage</th>
+          <th>OF</th>
+          <th>Lot</th>
+          <th>Produit</th>
+          <th>Régleur</th>
+          <th>Volume</th>
+        </tr>
+      </thead>
+      <tbody id="vracUsageBody"></tbody>
+    </table>
+  </div>
+</div>
 <!-- ===================================================== -->
 <!-- JS GLOBAL : affiche input si _new -->
 <!-- ===================================================== -->
 <script>
+
 document.addEventListener("DOMContentLoaded", () => {
 
   // Godet (un seul input)
@@ -884,6 +1306,183 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
     loadVrac(id);
+  });
+});
+</script>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const btn = document.getElementById("btnHistoryRef");
+  const modal = document.getElementById("historyModal");
+  const closeBtn = document.getElementById("historyClose");
+  const refLabel = document.getElementById("historyRefLabel");
+  const body = document.getElementById("historyBody");
+  const status = document.getElementById("historyStatus");
+
+  if (!btn || !modal) return;
+
+  const openModal = () => { modal.style.display = "block"; };
+  const closeModal = () => { modal.style.display = "none"; };
+
+  closeBtn?.addEventListener("click", closeModal);
+
+  // fermer si clic sur fond sombre
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) closeModal();
+  });
+
+  const fmtDate = (iso) => {
+    if (!iso) return "—";
+    // iso = YYYY-MM-DD
+    const [y,m,d] = iso.split("-");
+    if (!y || !m || !d) return iso;
+    return `${d}/${m}/${y}`;
+  };
+
+  const fmtNum = (n) => (n === null || n === undefined || n === "") ? "—" : String(n);
+
+  btn.addEventListener("click", async () => {
+    const ref = btn.dataset.ref || "";
+    refLabel.textContent = ref || "—";
+    body.innerHTML = "";
+    status.textContent = "Chargement…";
+    openModal();
+
+    try {
+      const url = `/api/reglage/history/${encodeURIComponent(ref)}/`;
+      const res = await fetch(url, { headers: { "Accept": "application/json" } });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+
+      const data = await res.json();
+      const items = data.items || [];
+
+      if (items.length === 0) {
+        status.textContent = "Aucun historique trouvé pour cette référence.";
+        return;
+      }
+
+      status.textContent = `${items.length} élément(s) trouvé(s).`;
+
+      body.innerHTML = items.map(r => {
+        
+            const url = `/reglage/${r.id}/`;
+
+
+        return `
+          
+          <tr class="history-row"
+                  data-url="${url}"
+                  style="cursor:pointer;">
+
+            <td style="border:1px solid #ccc; padding:6px;">${fmtDate(r.date_reglage)}</td>
+            <td style="border:1px solid #ccc; padding:6px;">${r.numeros_of || "—"}</td>
+            <td style="border:1px solid #ccc; padding:6px;">${r.numeros_lot || "—"}</td>
+            <td style="border:1px solid #ccc; padding:6px;">${r.regleur || "—"}</td>
+            <td style="border:1px solid #ccc; padding:6px;">${fmtNum(r.volume_demarrage)}</td>
+            <td style="border:1px solid #ccc; padding:6px;">${fmtNum(r.cadence)}</td>
+            <td style="border:1px solid #ccc; padding:6px;">${r.observation || "—"}</td>
+          </tr>
+        `;
+      }).join("");
+
+      body.querySelectorAll("tr.history-row").forEach(row => {
+        row.addEventListener("click", () => {
+          window.location.href = row.dataset.url;
+        });
+      });
+
+    } catch (err) {
+      console.error(err);
+      status.textContent = "Erreur de chargement de l’historique.";
+    }
+  });
+});
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const btn = document.getElementById("btnVracUsage");
+  const modal = document.getElementById("vracUsageModal");
+  const closeBtn = document.getElementById("vracUsageClose");
+  const body = document.getElementById("vracUsageBody");
+  const status = document.getElementById("vracUsageStatus");
+  const refLabel = document.getElementById("vracUsageRef");
+
+  if (!btn) return;
+
+  const open = () => modal.style.display = "block";
+  const close = () => modal.style.display = "none";
+
+  closeBtn.addEventListener("click", close);
+  modal.addEventListener("click", e => { if (e.target === modal) close(); });
+
+  const fmtDate = iso => {
+    if (!iso) return "—";
+    const [y,m,d] = iso.split("-");
+    return `${d}/${m}/${y}`;
+  };
+  const fmt = v => (v === null || v === "" || v === undefined) ? "—" : v;
+
+  btn.addEventListener("click", async () => {
+    const vracId = btn.dataset.vracId;
+    const vracRef = btn.dataset.vracRef;
+
+    refLabel.textContent = vracRef;
+    body.innerHTML = "";
+    status.textContent = "Chargement…";
+    open();
+
+    try {
+      const res = await fetch(`/api/vrac/usage/${vracId}/`);
+      if (!res.ok) throw new Error(res.status);
+
+      const data = await res.json();
+      status.textContent = `${data.count} réglage(s) utilisent ce VRAC.`;
+
+      body.innerHTML = data.items.map(r => `
+        <tr class="vrac-usage-row"
+            data-url="/reglage/${r.id}/"
+            style="cursor:pointer;">
+          <td>${fmtDate(r.date_reglage)}</td>
+          <td>${fmt(r.ref)}</td>
+          <td>${fmt(r.numeros_of)}</td>
+          <td>${fmt(r.numeros_lot)}</td>
+          <td>${fmt(r.nom_produit)}</td>
+          <td>${fmt(r.regleur)}</td>
+          <td>${fmt(r.volume)}</td>
+        </tr>
+      `).join("");
+
+      body.querySelectorAll(".vrac-usage-row").forEach(tr => {
+        tr.addEventListener("click", () => {
+          window.location.href = tr.dataset.url;
+        });
+      });
+
+    } catch (e) {
+      console.error(e);
+      status.textContent = "Erreur lors du chargement.";
+    }
+  });
+});
+</script>
+  <script>
+document.addEventListener("DOMContentLoaded", () => {
+  const search = document.getElementById("vracSearch");
+  const select = document.getElementById("vracSelect");
+
+  if (!search || !select) return;
+
+  const options = Array.from(select.options);
+
+  search.addEventListener("input", () => {
+    const q = search.value.trim().toLowerCase();
+
+    options.forEach(opt => {
+      if (!opt.value) return; // laisse l'option ---
+      const ref = opt.dataset.ref || "";
+      const nom = opt.dataset.nom || "";
+      opt.hidden = q && !(ref.includes(q) || nom.includes(q));
+    });
   });
 });
 </script>
