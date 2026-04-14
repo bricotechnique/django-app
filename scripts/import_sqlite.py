@@ -6,41 +6,41 @@ import django
 import sqlite3
 from pathlib import Path
 
-# --------------------------------------------------
-# AJOUT DU ROOT DU PROJET AU PYTHONPATH (IMPORTANT)
-# --------------------------------------------------
+# ==================================================
+# CONFIG DJANGO
+# ==================================================
 BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.append(str(BASE_DIR))
 
-# --------------------------------------------------
-# CONFIG DJANGO
-# --------------------------------------------------
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 django.setup()
 
-# --------------------------------------------------
-# IMPORT DES MODÈLES
-# --------------------------------------------------
-from machines.models import Vrac  # adapte si besoin
+# ==================================================
+# IMPORT MODELE
+# ==================================================
+from machines.models import Vrac
 
-# --------------------------------------------------
+# ==================================================
 # CONNEXION SQLITE
-# --------------------------------------------------
-sqlite_db_path = BASE_DIR / "db.sqlite3"
-
-conn = sqlite3.connect(sqlite_db_path)
+# ==================================================
+sqlite_path = BASE_DIR / "db.sqlite3"
+conn = sqlite3.connect(sqlite_path)
 cursor = conn.cursor()
 
-cursor.execute("SELECT id, nom, description FROM machines_vrac")
+cursor.execute("SELECT * FROM machines_vrac")
+columns = [col[0] for col in cursor.description]
+
 rows = cursor.fetchall()
 
 for row in rows:
+    data = dict(zip(columns, row))
+
+    # ✅ Mapping propre (sans id dans defaults)
+    pk = data.pop("id")
+
     Vrac.objects.update_or_create(
-        id=row[0],
-        defaults={
-            "nom": row[1],
-            "description": row[2],
-        }
+        id=pk,
+        defaults=data
     )
 
 conn.close()
