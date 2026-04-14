@@ -1,5 +1,342 @@
 <!DOCTYPE html>
 <html lang="fr">
+
+  <style>
+/* ============================================================
+   🌊 THALGO – DARK MARINE THEME
+   Application métier – Recherche & Réglages
+   ============================================================ */
+
+/* =========================
+   VARIABLES
+   ========================= */
+:root {
+  /* Fonds */
+  --bg-main: #0b1f2a;
+  --bg-header: #0e2735;
+  --bg-card: #102b3a;
+  --bg-card-soft: #14394d;
+  --bg-hover: #163f55;
+
+  /* Couleurs Thalgo-like */
+  --brand-primary: #4fb3b8;
+  --brand-secondary: #1c4f66;
+  --brand-accent: #7fd9d6;
+
+  /* Texte */
+  --text-main: #e6f2f6;
+  --text-muted: #9fb7c3;
+
+  /* UI */
+  --border-soft: rgba(255,255,255,.08);
+  --radius: 8px;
+  --radius-lg: 14px;
+  --shadow-soft: 0 8px 24px rgba(0,0,0,.35);
+}
+
+/* =========================
+   BASE
+   ========================= */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg-main);
+  color: var(--text-main);
+  font-family: "Inter", "Segoe UI", Arial, sans-serif;
+  font-size: 14px;
+}
+
+a {
+  color: var(--brand-accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* =========================
+   HEADER STICKY
+   ========================= */
+.reglage-header {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background: linear-gradient(180deg, #0e2735 0%, #0b1f2a 100%);
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-soft);
+}
+
+/* =========================
+   CARTES / SECTIONS
+   ========================= */
+.card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  box-shadow: var(--shadow-soft);
+  margin-bottom: 22px;
+}
+
+.card h2 {
+  margin: 0 0 12px 0;
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--brand-primary);
+  border-bottom: 1px solid var(--border-soft);
+  padding-bottom: 6px;
+}
+
+/* =========================
+   FORMULAIRES
+   ========================= */
+label {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+input,
+select,
+textarea {
+  background: #0e3346;
+  color: var(--text-main);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  padding: 6px 8px;
+  width: 100%;
+}
+
+input::placeholder {
+  color: var(--text-muted);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 2px rgba(79,179,184,.25);
+}
+
+/* =========================
+   BOUTONS
+   ========================= */
+.btn {
+  padding: 8px 14px;
+  border-radius: var(--radius);
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all .2s ease;
+}
+
+.btn-save {
+  background: var(--brand-primary);
+  color: #052026;
+}
+
+.btn-edit {
+  background: var(--brand-secondary);
+  color: var(--text-main);
+}
+
+.btn-delete {
+  background: #9c2f2f;
+  color: white;
+}
+
+.btn-small {
+  padding: 4px 8px;
+  font-size: 13px;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+}
+
+/* =========================
+   TABLEAUX (Recherche / Historique)
+   ========================= */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+th {
+  background: var(--bg-card-soft);
+  color: var(--brand-primary);
+  font-size: 12px;
+  letter-spacing: .4px;
+  padding: 8px;
+  text-align: left;
+}
+
+td {
+  padding: 8px;
+  border-top: 1px solid var(--border-soft);
+}
+
+tr:hover {
+  background: var(--bg-hover);
+}
+
+/* =========================
+   RECHERCHE (FORMULAIRE 2 LIGNES)
+   ========================= */
+.search-form {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(160px, 1fr)) auto;
+  gap: 14px 16px;
+  align-items: end;
+}
+
+.search-form .field {
+  display: flex;
+  flex-direction: column;
+}
+
+.search-form .actions {
+  display: flex;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+/* =========================
+   VRAC SEARCH (FILTRÉ)
+   ========================= */
+#vracSearch {
+  background: #0e3346;
+  border: 1px solid var(--border-soft);
+  color: var(--text-main);
+}
+
+#vracSelect {
+  background: #0e3346;
+}
+
+#vracSelect option {
+  background: #0e3346;
+}
+
+/* =========================
+   MODALES (Historique / VRAC)
+   ========================= */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.65);
+  z-index: 9999;
+}
+
+.modal-content {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  padding: 16px;
+}
+
+/* =========================
+   LIGNES CLIQUABLES
+   ========================= */
+.history-row,
+.vrac-usage-row {
+  cursor: pointer;
+}
+
+.history-row:hover,
+.vrac-usage-row:hover {
+  background: var(--bg-hover);
+}
+
+/* =========================
+   UTILITAIRES
+   ========================= */
+.text-muted {
+  color: var(--text-muted);
+}
+
+.mt-1 { margin-top: 8px; }
+.mt-2 { margin-top: 16px; }
+.mt-3 { margin-top: 24px; }
+
+/* ============================================================
+   🌙 HISTORIQUE – VERSION SOMBRE CONFORT VISUEL
+   ============================================================ */
+
+/* Fond de la popup */
+.modal,
+#historyModal,
+#vracUsageModal {
+  background: rgba(5, 15, 20, 0.75); /* plus sombre, moins agressif */
+}
+
+/* Contenu de la popup */
+.modal-content,
+#historyModal > div,
+#vracUsageModal > div {
+  background: #0f2a38; /* plus sombre que les cartes */
+  color: var(--text-main);
+  box-shadow: 0 10px 30px rgba(0,0,0,.6);
+}
+
+/* Titre */
+#historyModal h3,
+#vracUsageModal h3 {
+  color: var(--brand-accent);
+}
+
+/* =========================
+   TABLE HISTORIQUE
+   ========================= */
+#historyModal table,
+#vracUsageModal table {
+  background: #0f2a38;
+}
+
+/* En-têtes */
+#historyModal th,
+#vracUsageModal th {
+  background: #14394d;       /* ✅ fini le gris/blanc */
+  color: var(--brand-primary);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+/* Cellules */
+#historyModal td,
+#vracUsageModal td {
+  background: transparent;
+  color: var(--text-main);
+  border-top: 1px solid var(--border-soft);
+}
+
+/* Lignes */
+#historyModal tr,
+#vracUsageModal tr {
+  transition: background .15s ease;
+}
+
+/* Hover doux */
+#historyModal tr:hover,
+#vracUsageModal tr:hover {
+  background: #163f55;
+}
+
+/* Ligne cliquable */
+.history-row,
+.vrac-usage-row {
+  cursor: pointer;
+}
+
+  </style>
 <head>
     <meta charset="UTF-8">
     <title>Connexion</title>
