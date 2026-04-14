@@ -38,7 +38,7 @@ DEBUG = DJANGO_ENV != "production"
 if DJANGO_ENV == "production":
     ALLOWED_HOSTS = [
         ".up.railway.app",
-        "web-production-f6344.up.railway.app", 
+        "thalgo.brico-technique.com", 
     ]
 else:
     ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
