@@ -54,8 +54,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
 
-    # ✅ tes apps ici
-    # "machines",
+    
+     "machines",
 ]
 
 # ==================================================
