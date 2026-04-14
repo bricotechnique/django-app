@@ -8,11 +8,16 @@ from .views import (
     create_reglage,
     api_of_list,
 )
+from django.contrib import admin
+from django.views.generic import RedirectView
 
 
 
-
+    
 urlpatterns = [
+    path("", RedirectView.as_view(url="/login/", permanent=False)),
+    path("admin/", admin.site.urls),
+
     path("recherche/", views.recherche_reglages, name="recherche_reglages"),
     path("reglage/new/", views.create_reglage, name="create_reglage"),
     path("reglage/<int:reglage_id>/", views.detail_reglage, name="detail_reglage"),
