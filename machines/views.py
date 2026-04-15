@@ -326,7 +326,16 @@ def delete_reglage(request, reglage_id):
 
 @login_required
 def recherche_reglages(request):
-    reglages = ReglageEKO.objects.all().order_by("-date_reglage", "-id")
+    
+    reglages = (
+        ReglageEKO.objects
+        .all()
+        .order_by(
+            F("date_reglage").desc(nulls_last=True),
+            F("id").desc()
+    )
+)
+
 
     ref = request.GET.get("ref")
     nom = request.GET.get("nom")
