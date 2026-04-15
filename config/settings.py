@@ -112,12 +112,19 @@ if DATABASE_URL:
         )
     }
 else:
+    
     DATABASES = {
         "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": "reglages_machine_dev",
+            "USER": "postgres",          
+            "PASSWORD": "Simfelilor28*",       
+            "HOST": "localhost",
+            "PORT": "5432",
         }
-    }
+
+
+        }
 
 # ==================================================
 # PASSWORDS
