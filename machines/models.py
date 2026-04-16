@@ -57,6 +57,11 @@ class Godet(models.Model):
     def __str__(self):
         return self.valeur
     
+
+
+ 
+   
+
 class ReglageEKO(models.Model):
     # =====================================================
     # IDENTIFICATION / TRACABILITÉ
@@ -74,22 +79,22 @@ class ReglageEKO(models.Model):
     )
     numeros_lot = models.CharField(max_length=100, db_index=True)
 
+
     of_precedent = models.ForeignKey(
-    "self",
-    null=True,
-    blank=True,
-    on_delete=models.SET_NULL,
-    related_name="precedents"
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="reglages_suivants",
     )
 
     of_lavage = models.ForeignKey(
-    "self",
-    null=True,
-    blank=True,
-    on_delete=models.SET_NULL,
-    related_name="lavages"
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="reglages_lavage_suivants",
     )
-    
     date_reglage = models.DateField(null=True, blank=True)
 
     regleur = models.CharField(max_length=50, blank=True)

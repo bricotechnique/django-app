@@ -8,13 +8,47 @@ from django.db import IntegrityError
 from django.views.decorators.http import require_GET
 from django.utils.html import escape
 from django.db.models import F
-
-
-
-
 from machines.models import (
     ReglageEKO, Godet, Bec, Centreur, Bute, Pince, PinceF, Vrac
 )
+
+
+@require_GET
+@login_required
+def search_of_precedent(request):
+    q = request.GET.get("q", "").strip()
+
+    if len(q) < 2:
+        return JsonResponse([], safe=False)
+
+    results = (
+        ReglageEKO.objects
+        .filter(numeros_of__icontains=q)
+        .order_by("-id")[:10]
+        .values("id", "numeros_of", "nom_produit")
+    )
+
+    return JsonResponse(list(results), safe=False)
+
+
+
+@require_GET
+@login_required
+def search_of_lavage(request):
+    q = request.GET.get("q", "").strip()
+
+    if len(q) < 2:
+        return JsonResponse([], safe=False)
+
+    results = (
+        ReglageEKO.objects
+        .filter(numeros_of__icontains=q)
+        .order_by("-id")[:10]
+        .values("id", "numeros_of", "nom_produit")
+    )
+
+    return JsonResponse(list(results), safe=False)
+
 
 
 
@@ -143,12 +177,7 @@ def apply_post_to_reglage(request, obj: ReglageEKO):
         if hasattr(obj, f):
             setattr(obj, f, to_float(request.POST.get(f)))
 
-    # FK self: OF précédent / lavage
-    of_precedent_id = request.POST.get("of_precedent")
-    obj.of_precedent_id = int(of_precedent_id) if of_precedent_id else None
-
-    of_lavage_id = request.POST.get("of_lavage")
-    obj.of_lavage_id = int(of_lavage_id) if of_lavage_id else None
+    
 
     # FK choix + nouveau
     if hasattr(obj, "godet"):
@@ -185,6 +214,21 @@ def apply_post_to_reglage(request, obj: ReglageEKO):
         # motorise_1..3 = texte chez toi (si champ existe)
         if i <= 3 and hasattr(obj, f"motorise_{i}"):
             setattr(obj, f"motorise_{i}", request.POST.get(f"motorise_{i}", ""))
+    
+
+        # OF PRECEDENT
+        of_precedent_id = request.POST.get("of_precedent_id")
+        if of_precedent_id:
+            obj.of_precedent = ReglageEKO.objects.get(pk=int(of_precedent_id))
+        # ❌ rien si vide → on conserve
+
+        # OF LAVAGE
+        of_lavage_id = request.POST.get("of_lavage_id")
+        if of_lavage_id:
+            obj.of_lavage = ReglageEKO.objects.get(pk=int(of_lavage_id))
+        # ❌ rien si vide → on conserve
+
+
 
  #Historique
 
@@ -339,6 +383,7 @@ def recherche_reglages(request):
 
     ref = request.GET.get("ref")
     nom = request.GET.get("nom")
+    vrac = request.GET.get("vrac")
     lot = request.GET.get("lot")
     of_ = request.GET.get("of")
     volume = request.GET.get("volume")
@@ -347,6 +392,8 @@ def recherche_reglages(request):
         reglages = reglages.filter(ref__icontains=ref)
     if nom:
         reglages = reglages.filter(nom_produit__icontains=nom)
+    if vrac:
+        reglages = reglages.filter(vrac__icontains=vrac)
     if lot:
         reglages = reglages.filter(numeros_lot__icontains=lot)
     if of_:
@@ -379,6 +426,8 @@ def detail_reglage(request, reglage_id):
 @login_required
 @permission_required("machines.change_reglageeko", raise_exception=True)
 def edit_reglage(request, reglage_id):
+
+    
     reglage = get_object_or_404(ReglageEKO, id=reglage_id)
 
     ofs = ReglageEKO.objects.exclude(id=reglage.id).order_by("-date_reglage", "-id")
@@ -389,6 +438,11 @@ def edit_reglage(request, reglage_id):
     pinces = Pince.objects.all().order_by("valeur")
     pincesf = PinceF.objects.all().order_by("valeur")
     vracs = Vrac.objects.all().order_by("ref")
+    
+    
+    
+
+
 
     if request.method == "POST":
         # ✅ action existe toujours en POST

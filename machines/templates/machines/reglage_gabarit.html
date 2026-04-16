@@ -416,6 +416,15 @@ tr:hover {
           🕘 Historique
         </button>
       {% endif %}
+
+        <th>Nom produit</th>
+    <td>
+      {% if mode == "edit" %}
+        <input type="text" name="nom_produit" value="{{ reglage.nom_produit|default:'' }}" maxlength="120">
+      {% else %}
+        {{ reglage.nom_produit|default:"—" }}
+      {% endif %}
+    </td>
     </td>
     <tr>
       <th>Réf VRAC</th>
@@ -434,14 +443,7 @@ tr:hover {
        
     </tr>
  
-    <th>Nom produit</th>
-    <td>
-      {% if mode == "edit" %}
-        <input type="text" name="nom_produit" value="{{ reglage.nom_produit|default:'' }}" maxlength="120">
-      {% else %}
-        {{ reglage.nom_produit|default:"—" }}
-      {% endif %}
-    </td>
+  
   </tr>
 
   <tr>
@@ -508,53 +510,86 @@ tr:hover {
         {% if reglage.volume_demarrage != None %}{{ reglage.volume_demarrage|floatformat:'g' }}{% else %}<span class="dash">—</span>{% endif %}
       {% endif %}
     </td>
+    </tr>
+    <tr>
+    <th>Cadence</th>
+    <td>
+      {% if mode == "edit" %}
+        <input type="text" class="small-input" name="cadence" value="{{ reglage.cadence|floatformat:'g' }}">
+      {% else %}
+        {% if reglage.cadence != None %}{{ reglage.cadence|floatformat:'g' }}{% else %}<span class="dash">—</span>{% endif %}
+      {% endif %}
+    </td>
   </tr>
 
   <tr>
-    <th>OF précédent</th>
-    <td>
-      {% if mode == "edit" %}
-        <select name="of_precedent" class="wide-select">
-          <option value="">---</option>
-          {% for of in ofs %}
-            <option value="{{ of.id }}" {% if reglage.of_precedent and reglage.of_precedent.id == of.id %}selected{% endif %}>
-              {{ of.numeros_of }} — {{ of.nom_produit }}
-            </option>
-          {% endfor %}
-        </select>
-      {% else %}
-        {% if reglage.of_precedent %}
-          <a href="{% url 'detail_reglage' reglage.of_precedent.id %}">
-            {{ reglage.of_precedent.numeros_of }} — {{ reglage.of_precedent.nom_produit }}
-          </a>
-        {% else %}
-          <span class="dash">Aucun</span>
-        {% endif %}
-      {% endif %}
-    </td>
+  <th>OF précédent</th>
+  <td>
+    {% if mode == "edit" %}
 
-    <th>OF lavage</th>
-    <td>
-      {% if mode == "edit" %}
-        <select name="of_lavage" class="wide-select">
-          <option value="">---</option>
-          {% for of in ofs %}
-            <option value="{{ of.id }}" {% if reglage.of_lavage and reglage.of_lavage.id == of.id %}selected{% endif %}>
-              {{ of.numeros_of }} — {{ of.nom_produit }}
-            </option>
-          {% endfor %}
-        </select>
+    <input
+  type="hidden"
+  name="of_precedent_id"
+  id="of-precedent-id"
+  value="{% if reglage.of_precedent %}{{ reglage.of_precedent.id }}{% endif %}"
+>
+<input
+  type="text"
+  id="of-precedent-input"
+  placeholder="Commencez à taper un OF…"
+  autocomplete="off"
+>
+
+<ul id="of-precedent-results" class="autocomplete-results"></ul>
+
+    {% else %}
+      
+      {% if reglage.of_precedent %}
+        <a href="{% url 'detail_reglage' reglage.of_precedent.id %}">
+          {{ reglage.of_precedent.numeros_of }} — {{ reglage.of_precedent.nom_produit }}
+        </a>
       {% else %}
-        {% if reglage.of_lavage %}
-          <a href="{% url 'detail_reglage' reglage.of_lavage.id %}">
-            {{ reglage.of_lavage.numeros_of }} — {{ reglage.of_lavage.nom_produit }}
-          </a>
-        {% else %}
-          <span class="dash">Aucun</span>
-        {% endif %}
+        <span class="dash">Aucun</span>
       {% endif %}
-    </td>
-  </tr>
+
+    {% endif %}
+  </td>
+
+  <th>OF lavage</th>
+  <td>
+    {% if mode == "edit" %}
+
+    
+     
+<input
+  type="hidden"
+  name="of_lavage_id"
+  id="of-lavage-id"
+  value="{% if reglage.of_lavage %}{{ reglage.of_lavage.id }}{% endif %}"
+>
+<input
+  type="text"
+  id="of-lavage-input"
+  placeholder="Commencez à taper un OF…"
+  autocomplete="off"
+>
+
+<ul id="of-lavage-results" class="autocomplete-results"></ul>
+
+    {% else %}
+      
+      {% if reglage.of_lavage %}
+        <a href="{% url 'detail_reglage' reglage.of_lavage.id %}">
+          {{ reglage.of_lavage.numeros_of }} — {{ reglage.of_lavage.nom_produit }}
+        </a>
+      {% else %}
+        <span class="dash">Aucun</span>
+      {% endif %}
+
+    {% endif %}
+  </td>
+</tr>
+
 </table>
 
 <!-- ===================================================== -->
@@ -699,7 +734,7 @@ tr:hover {
     <th>Centreur</th>
     <td>
       {% if mode == "edit" %}
-        {% if p.num <= 3 %}
+        
           <select name="centerur_{{ p.num }}" class="centreur-select wide-select" data-num="{{ p.num }}">
             <option value="">---</option>
             {% for c in centreurs %}
@@ -709,13 +744,10 @@ tr:hover {
           </select>
           <input type="text" class="centreur-input" data-num="{{ p.num }}" name="centerur_{{ p.num }}_new_value"
                  placeholder="Nouveau centreur" style="display:none; margin-top:5px;">
-        {% else %}
-          <!-- centerur_4 est texte dans ton modèle actuel -->
-          <input type="text" name="centerur_4" value="{{ reglage.centerur_4|default:'' }}" maxlength="50">
-        {% endif %}
+       
       {% else %}
         {% if p.centerur %}
-          {% if p.num <= 3 %}{{ p.centerur.valeur }}{% else %}{{ p.centerur }}{% endif %}
+          {{ p.centerur.valeur }}
         {% else %}
           <span class="dash">—</span>
         {% endif %}
@@ -1478,7 +1510,98 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 </script>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
 
+  function restoreIfEmpty(inputId, hiddenId, initialText, initialId) {
+    const input = document.getElementById(inputId);
+    const hidden = document.getElementById(hiddenId);
+    if (!input || !hidden) return;
+
+    input.addEventListener("blur", () => {
+      if (!hidden.value) {
+        input.value = initialText;
+        hidden.value = initialId;
+      }
+    });
+  }
+
+  restoreIfEmpty(
+    "of-precedent-input",
+    "of-precedent-id",
+    "{{ reglage.of_precedent.numeros_of|default:'' }}{% if reglage.of_precedent %} — {{ reglage.of_precedent.nom_produit }}{% endif %}",
+    "{{ reglage.of_precedent.id|default:'' }}"
+  );
+
+  restoreIfEmpty(
+    "of-lavage-input",
+    "of-lavage-id",
+    "{{ reglage.of_lavage.numeros_of|default:'' }}{% if reglage.of_lavage %} — {{ reglage.of_lavage.nom_produit }}{% endif %}",
+    "{{ reglage.of_lavage.id|default:'' }}"
+  );
+
+});
+</script>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+
+  function setupAutocomplete({ inputId, hiddenId, resultsId, url }) {
+    const input = document.getElementById(inputId);
+    const hidden = document.getElementById(hiddenId);
+    const results = document.getElementById(resultsId);
+
+    if (!input || !hidden || !results) return;
+
+      // Invalider la FK quand on tape
+    input.addEventListener("input", async () => {
+
+      // ⚠️ seulement si l'utilisateur change vraiment le contenu
+      if (input.value.trim() === "") {
+        hidden.value = "";
+      }
+      const q = input.value.trim();
+      if (q.length < 2) {
+        results.innerHTML = "";
+        return;
+      }
+
+      const res = await fetch(url + "?q=" + encodeURIComponent(q));
+      const data = await res.json();
+
+      results.innerHTML = data.map(r => `
+        <li data-id="${r.id}">
+          <strong>${r.numeros_of}</strong> — ${r.nom_produit}
+        </li>
+      `).join("");
+
+      results.querySelectorAll("li").forEach(li => {
+        li.addEventListener("click", () => {
+          hidden.value = li.dataset.id;
+          input.value = li.innerText;
+          results.innerHTML = "";
+        });
+      });
+    });
+  }
+
+  // OF précédent
+  setupAutocomplete({
+    inputId: "of-precedent-input",
+    hiddenId: "of-precedent-id",
+    resultsId: "of-precedent-results",
+    url: "{% url 'search_of_precedent' %}"
+  });
+
+  // OF lavage
+  setupAutocomplete({
+    inputId: "of-lavage-input",
+    hiddenId: "of-lavage-id",
+    resultsId: "of-lavage-results",
+    url: "{% url 'search_of_lavage' %}"
+  });
+
+});
+</script>
 
 </body>
 </html>

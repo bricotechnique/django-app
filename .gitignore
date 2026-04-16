@@ -16,3 +16,7 @@ env/
 # OS
 .DS_Store
 Thumbs.db
+
+
+.dump
+.bat

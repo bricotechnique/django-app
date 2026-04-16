@@ -377,6 +377,11 @@ tr:hover {
     <input type="text" name="nom">
   </div>
 
+ <div class="field">
+    <label>Vrac</label>
+    <input type="text" name="vrac">
+  </div>
+
   <div class="field">
     <label>Numéro de lot</label>
     <input type="text" name="lot">
@@ -413,6 +418,7 @@ tr:hover {
     <tr>
         <th>Date</th>
         <th>Référence</th>
+        <th>Vrac</th>
         <th>Nom produit</th>
         <th>OF</th>
         <th>Lot</th>
@@ -423,6 +429,7 @@ tr:hover {
     <tr>
         <td><a class="rowlink" href="{% url 'detail_reglage' r.id %}">{{ r.date_reglage|date:'Y-m-d' }}</a></td>
         <td><a class="rowlink" href="{% url 'detail_reglage' r.id %}">{{ r.ref }}</a></td>
+        <td><a class="rowlink" href="{% url 'detail_reglage' r.id %}">{{ r.vrac }}</a></td>
         <td><a class="rowlink" href="{% url 'detail_reglage' r.id %}">{{ r.nom_produit }}</a></td>
         <td><a class="rowlink" href="{% url 'detail_reglage' r.id %}">{{ r.numeros_of }}</a></td>
         <td><a class="rowlink" href="{% url 'detail_reglage' r.id %}">{{ r.numeros_lot }}</a></td>
