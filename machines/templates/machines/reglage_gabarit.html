@@ -1044,76 +1044,31 @@ tr:hover {
 <h2>Vrac</h2>
 
 {% if mode == "edit" %}
- <div style="margin-bottom:6px;">
-  <input type="text"
-         id="vracSearch"
-         placeholder="Rechercher un VRAC (réf ou nom)…"
-         style="width:260px; padding:4px;">
-</div>
+<div style="display:flex; gap:6px; align-items:center;">
+  <select name="vrac_ref" id="vracSelect" class="wide-select">
+    <option value="">---</option>
+    {% for v in vracs %}
+      <option value="{{ v.id }}"
+        {% if reglage.vrac_ref and reglage.vrac_ref.id == v.id %}selected{% endif %}>
+        {{ v.ref }} — {{ v.Nom_vrac }} — {{v.marque}}
+      </option>
+    {% endfor %}
+  </select>
 
-<select name="vrac_ref"
-        id="vracSelect"
-        class="wide-select"
-        size="6">  {# size optionnel pour meilleur confort #}
-  <option value="">---</option>
-  {% for v in vracs %}
-    <option value="{{ v.id }}"
-            data-ref="{{ v.ref|lower }}"
-            data-nom="{{ v.Nom_vrac|default:''|lower }}">
-      {{ v.ref }} — {{ v.Nom_vrac }}
-    </option>
-  {% endfor %}
-</select>
+  <button type="button" id="btnAddVrac" class="btn btn-small">+</button>
+</div>
 {% endif %}
 
+{% if reglage.vrac_ref %}
 <table>
- <tr> 
-  <th>Commentaire</th>
-    <td id="vrac_ref">{% if reglage.vrac_ref %}{{ reglage.vrac_ref.commentaire }}{% else %}—{% endif %}</td>
-  </tr>
+  <tr><th>Référence VRAC</th><td>{{ reglage.vrac_ref.ref }}</td><th>Nom VRAC</th><td>{{ reglage.vrac_ref.Nom_vrac }}</td></tr>
+  <tr><th>Marque</th><td>{{ reglage.vrac_ref.marque }}</td><th>Type</th><td>{{ reglage.vrac_ref.vrac_type }}</td></tr>
+  <tr><th>Pompe</th><td>{{ reglage.vrac_ref.pompe }}</td><th>Étuve</th><td>{{ reglage.vrac_ref.etuve }}</td></tr>
+  <tr><th>Température</th><td>{{ reglage.vrac_ref.temperature }}</td><th>Microbio</th><td>{{ reglage.vrac_ref.circuit_ferme_microbio }}</td></tr>
 </table>
-<table>
-<tr>
-  <th>Réf VRAC</th>
-  <td id="vrac_ref">{% if reglage.vrac_ref %}{{ reglage.vrac_ref.ref }}{% else %}—{% endif %}</td>
-
-  <th>Nom vrac</th>
-  <td id="vrac_nom">{% if reglage.vrac_ref %}{{ reglage.vrac_ref.Nom_vrac }}{% else %}—{% endif %}</td>
-</tr>
-
-
-  <tr>
-    <th>Type</th>
-    <td id="vrac_ref">{% if reglage.vrac_ref %}{{ reglage.vrac_ref.vrac_type }}{% else %}—{% endif %}</td>
-
-    <th>Pompe</th>
-    <td id="vrac_ref">{% if reglage.vrac_ref %}{{ reglage.vrac_ref.pompe }}{% else %}—{% endif %}</td>
-  </tr>
-
-  <tr>
-    <th>Etuve</th>
-    <td id="vrac_ref">{% if reglage.vrac_ref %}{{ reglage.vrac_ref.etuve }}{% else %}—{% endif %}</td>
-
-    <th>T°</th>
-    <td id="vrac_ref">{% if reglage.vrac_ref %}{{ reglage.vrac_ref.temperature }}{% else %}—{% endif %}</td>
-  </tr>
-
-  <tr>
-    <th>Circuit fermé microbio</th>
-    <td id="vrac_ref">{% if reglage.vrac_ref %}{{ reglage.vrac_ref.circuit_ferme_microbio }}{% else %}—{% endif %}</td>
-
-    <th>Validation labo</th>
-    <td id="vrac_ref">{% if reglage.vrac_ref %}{{ reglage.vrac_ref.labo_validation }}{% else %}—{% endif %}</td>
-  </tr>
-
-  <tr>
-    <th>Validation microbio</th>
-    <td id="vrac_ref">{% if reglage.vrac_ref %}{{ reglage.vrac_ref.microbio_validation }}{% else %}—{% endif %}</td>
-
-    
-  </tr>
-
-</table>
+{% else %}
+<p class="dash">Aucun VRAC associé</p>
+{% endif %}
 <!-- ========================= -->
 <!-- MODAL HISTORIQUE REF -->
 <!-- ========================= -->
@@ -1179,6 +1134,28 @@ tr:hover {
       </thead>
       <tbody id="vracUsageBody"></tbody>
     </table>
+  </div>
+</div>
+
+<div id="vracModal" class="modal" style="display:none;">
+  <div class="modal-content" style="max-width:400px;">
+    <h3>Nouveau VRAC</h3>
+
+    <label>Référence *</label>
+    <input type="text" id="vracRef">
+
+    <label>Nom *</label>
+    <input type="text" id="vracNom">
+
+    <label>Marque</label>
+    <input type="text" id="vracMarque">
+
+    <div style="margin-top:12px; display:flex; gap:8px;">
+      <button type="button" id="vracSave" class="btn btn-save">Créer</button>
+      <button type="button" id="vracCancel" class="btn">Annuler</button>
+    </div>
+
+    <div id="vracError" class="text-muted" style="margin-top:8px;"></div>
   </div>
 </div>
 <!-- ===================================================== -->
@@ -1600,6 +1577,70 @@ document.addEventListener("DOMContentLoaded", () => {
     url: "{% url 'search_of_lavage' %}"
   });
 
+});
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const modal = document.getElementById("vracModal");
+  const btnOpen = document.getElementById("btnAddVrac");
+  const btnCancel = document.getElementById("vracCancel");
+  const btnSave = document.getElementById("vracSave");
+
+  const inputRef = document.getElementById("vracRef");
+  const inputNom = document.getElementById("vracNom");
+  const inputMarque = document.getElementById("vracMarque");
+  const errorBox = document.getElementById("vracError");
+
+  const select = document.getElementById("vracSelect");
+
+  btnOpen.addEventListener("click", () => {
+    modal.style.display = "block";
+    errorBox.textContent = "";
+    inputRef.value = "";
+    inputNom.value = "";
+    inputMarque.value = "";
+  });
+
+  btnCancel.addEventListener("click", () => {
+    modal.style.display = "none";
+  });
+
+  btnSave.addEventListener("click", async () => {
+    const ref = inputRef.value.trim();
+    const nom = inputNom.value.trim();
+    const marque = inputMarque.value.trim();
+
+    if (!ref || !nom) {
+      errorBox.textContent = "Référence et nom obligatoires";
+      return;
+    }
+
+    const res = await fetch("{% url 'create_vrac' %}", {
+      method: "POST",
+      headers: {
+        "X-CSRFToken": "{{ csrf_token }}",
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({ ref, nom, marque })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      errorBox.textContent = data.error || "Erreur inconnue";
+      return;
+    }
+
+    // ✅ ajouter l'option et sélectionner
+    const opt = document.createElement("option");
+    opt.value = data.id;
+    opt.textContent = `${data.ref} — ${data.nom}`;
+    opt.selected = true;
+    select.appendChild(opt);
+
+    modal.style.display = "none";
+  });
 });
 </script>
 

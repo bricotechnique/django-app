@@ -5,12 +5,42 @@ from django.contrib.auth.decorators import login_required, permission_required
 from django.urls import reverse
 from django.utils import timezone
 from django.db import IntegrityError
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_GET, require_POST
 from django.utils.html import escape
 from django.db.models import F
 from machines.models import (
     ReglageEKO, Godet, Bec, Centreur, Bute, Pince, PinceF, Vrac
 )
+
+
+@require_POST
+@login_required
+def create_vrac(request):
+    ref = request.POST.get("ref", "").strip()
+    nom = request.POST.get("nom", "").strip()
+
+    if not ref or not nom:
+        return JsonResponse(
+            {"error": "Référence et nom sont obligatoires"},
+            status=400
+        )
+
+    if Vrac.objects.filter(ref=ref).exists():
+        return JsonResponse(
+            {"error": "Cette référence VRAC existe déjà"},
+            status=400
+        )
+
+    vrac = Vrac.objects.create(
+        ref=ref,
+        Nom_vrac=nom,
+    )
+
+    return JsonResponse({
+        "id": vrac.id,
+        "ref": vrac.ref,
+        "nom": vrac.Nom_vrac,
+    })
 
 
 @require_GET
@@ -216,17 +246,17 @@ def apply_post_to_reglage(request, obj: ReglageEKO):
             setattr(obj, f"motorise_{i}", request.POST.get(f"motorise_{i}", ""))
     
 
-        # OF PRECEDENT
-        of_precedent_id = request.POST.get("of_precedent_id")
-        if of_precedent_id:
-            obj.of_precedent = ReglageEKO.objects.get(pk=int(of_precedent_id))
-        # ❌ rien si vide → on conserve
+    # OF PRECEDENT
+    of_precedent_id = request.POST.get("of_precedent_id")
+    if of_precedent_id:
+        obj.of_precedent = ReglageEKO.objects.get(pk=int(of_precedent_id))
+    # ❌ rien si vide → on conserve
 
-        # OF LAVAGE
-        of_lavage_id = request.POST.get("of_lavage_id")
-        if of_lavage_id:
-            obj.of_lavage = ReglageEKO.objects.get(pk=int(of_lavage_id))
-        # ❌ rien si vide → on conserve
+    # OF LAVAGE
+    of_lavage_id = request.POST.get("of_lavage_id")
+    if of_lavage_id:
+        obj.of_lavage = ReglageEKO.objects.get(pk=int(of_lavage_id))
+    # ❌ rien si vide → on conserve
 
 
 
@@ -437,20 +467,16 @@ def edit_reglage(request, reglage_id):
     butes = Bute.objects.all().order_by("valeur")
     pinces = Pince.objects.all().order_by("valeur")
     pincesf = PinceF.objects.all().order_by("valeur")
+
     vracs = Vrac.objects.all().order_by("ref")
     
-    
-    
-
 
 
     if request.method == "POST":
-        # ✅ action existe toujours en POST
         action = request.POST.get("action", "save")
 
-        # ✅ target existe toujours (évite UnboundLocalError)
         target = reglage
-        source_of = reglage.numeros_of  # OF original (utile en duplication)
+        source_of = reglage.numeros_of  
 
         if action == "duplicate":
             target = ReglageEKO()
@@ -458,18 +484,10 @@ def edit_reglage(request, reglage_id):
             target.ref = request.POST.get("ref", "COPIE")
             target.numeros_lot = request.POST.get("numeros_lot", "")
             target.nom_produit = request.POST.get("nom_produit", "")
-            # OF géré plus bas selon règles (souvent NULL)
 
-        # Applique le formulaire au bon objet
         apply_post_to_reglage(request, target)
 
-        # ==================================================
-        # RÈGLE OF :
-        # - NULL si fiche vide
-        # - en duplication : NULL si OF vide OU identique à l'original
-        # - sinon : si OF saisi, le garder (unique si conflit)
-        # - sinon : en save, ne pas écraser l’OF existant
-        # ==================================================
+
         posted_of = clean(request.POST.get("numeros_of"))  # nécessite un input dans le template
 
         if is_blank_reglage(target):

@@ -28,5 +28,6 @@ urlpatterns = [
     path("api/vrac/usage/<int:vrac_id>/", views.api_vrac_usage, name="api_vrac_usage"),
     path("ajax/of-precedent/", views.search_of_precedent, name="search_of_precedent"),
     path("ajax/of-lavage/", views.search_of_lavage, name="search_of_lavage"),
+    path("api/vrac/create/", views.create_vrac, name="create_vrac"),
 
 ]

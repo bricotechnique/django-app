@@ -52,6 +52,7 @@ class Command(BaseCommand):
                     "commentaire": clean(row.get("Commentaire")),
                     "labo_validation": clean(row.get("Labo validation")),
                     "microbio_validation": clean(row.get("Microbio validation")),
+                    "marque": clean(row.get("marque")),
                 }
 
 

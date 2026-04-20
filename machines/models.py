@@ -13,6 +13,7 @@ class Vrac(models.Model):
     commentaire = models.TextField(blank=True)
     labo_validation = models.CharField(max_length=50, blank=True)
     microbio_validation = models.CharField(max_length=50, blank=True)
+    marque = models.CharField(max_length=50, blank=True)
 
 
     def __str__(self):
@@ -215,19 +216,7 @@ class ReglageEKO(models.Model):
     # =====================================================
     vrac_ref = models.ForeignKey("Vrac", null=True, blank=True, on_delete=models.SET_NULL, related_name="reglages")
 
-    vrac = models.CharField(max_length=10, blank=True)
-    vrac_Nom_vrac = models.CharField(max_length=10, blank=True)
-    vrac_type = models.CharField(max_length=50, blank=True)
-    vrac_pompe = models.CharField(max_length=50, blank=True)
-    vrac_etuve = models.CharField(max_length=50, blank=True)
-    vrac_temperature = models.CharField(max_length=50, blank=True)
-    vrac_circuit_ferme_microbio = models.CharField(max_length=10, blank=True)
-    vrac_commentaire = models.TextField(blank=True)
-
-    vrac_labo_validation = models.CharField(max_length=10, blank=True)
-    vrac_microbio_validation = models.CharField(max_length=10, blank=True)
-
-    # =====================================================
+    
     # META
     # =====================================================
     cree_le = models.DateTimeField(auto_now_add=True)
