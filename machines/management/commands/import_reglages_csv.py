@@ -104,6 +104,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         path = options["path"]
         self.stdout.write(f"📄 Import depuis : {path}")
+        seen_numeros = defaultdict(int)
 
         if options["purge"]:
             self.stdout.write("🧹 Purge (ReglageEKO, Godet, Bec, Centreur, Bute, Pince, PinceF)…")
@@ -300,6 +301,17 @@ class Command(BaseCommand):
                     # -------------------------
                     of_prec_raw = clean(pick(row, "Of precedent", "OF precedent", "OF Precedent"))
                     of_lav_raw = clean(pick(row, "Of Lavage", "OF lavage", "OF Lavage"))
+                    base_num = clean(numeros_of)
+                    idx = seen_numeros[base_num]
+
+                    num_final = f"{base_num}{suffix(idx)}"
+
+                    while ReglageEKO.objects.filter(numeros_of=num_final).exists():
+                        idx += 1
+                        num_final = f"{base_num}{suffix(idx)}"
+
+                    seen_numeros[base_num] = idx + 1
+                    reglage.numeros_of = num_final
 
                     reglage.save()
                     created += 1
