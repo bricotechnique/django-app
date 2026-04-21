@@ -977,7 +977,13 @@ tr:hover {
       {% endif %}
     </td>
 
-
+    <th> H final</th>
+    <td> 
+      {% if mode == "edit" %}
+        <input type="text" class="small-input" name="h_finale" value="{{ reglage.h_finale|floatformat:'g' }}">
+      {% else %}
+        {% if reglage.h_finale != None %}{{ reglage.h_finale|floatformat:'g' }}{% else %}<span class="dash">—</span>{% endif %}
+      {% endif %}</td>
 
 
     
