@@ -301,7 +301,8 @@ class Command(BaseCommand):
                     # -------------------------
                     of_prec_raw = clean(pick(row, "Of precedent", "OF precedent", "OF Precedent"))
                     of_lav_raw = clean(pick(row, "Of Lavage", "OF lavage", "OF Lavage"))
-                    base_num = clean(numeros_of)
+                    
+                    base_num = clean(reglage.numeros_of)
                     idx = seen_numeros[base_num]
 
                     num_final = f"{base_num}{suffix(idx)}"
