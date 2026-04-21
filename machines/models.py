@@ -75,7 +75,7 @@ class ReglageEKO(models.Model):
         max_length=100,
         null=True,       # ✅ OBLIGATOIRE
         blank=True,      # ✅ OBLIGATOIRE
-        unique=True,
+        unique=False,
         db_index=True,
     )
     numeros_lot = models.CharField(max_length=100, db_index=True)
