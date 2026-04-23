@@ -29,7 +29,6 @@ urlpatterns = [
     path("ajax/of-precedent/", views.search_of_precedent, name="search_of_precedent"),
     path("ajax/of-lavage/", views.search_of_lavage, name="search_of_lavage"),
     path("api/vrac/create/", views.create_vrac, name="create_vrac"),
-    path("reglage/<int:reglage_id>/",views.detail_reglage,name="detail_reglage"),
-
+    path("api/reglage/<int:reglage_id>/changelog/",views.api_reglage_changelog,name="api_reglage_changelog",),
 
 ]

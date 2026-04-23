@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -344,6 +343,8 @@ tr:hover {
 </head>
 
 <body>
+  
+
 <div class="reglage-header">
 <!-- LOGOUT (form séparé, jamais imbriqué) -->
 <form method="post" action="{% url 'logout' %}" style="display:inline;">
@@ -380,9 +381,15 @@ tr:hover {
 </button>
 
     {% else %}
-      <a href="{% url 'edit_reglage' reglage.id %}">
-        <button type="button" class="btn btn-edit">✏️ Modifier</button>
-      </a>
+      {% if mode == "history" %}
+    <a href="{% url 'detail_reglage' reglage.id %}" class="btn btn-secondary">
+        Retour à la version courante
+    </a>
+{% else %}
+    <a href="{% url 'edit_reglage' reglage.id %}" class="btn btn-primary">
+        Modifier
+    </a>
+{% endif %}
     {% endif %}
   {% endif %}
 
@@ -461,21 +468,26 @@ tr:hover {
 
     </td>
     <td>
-    
-      <h3>Historique</h3>
-<ul>
-  {% for h in reglage.history.all %}
-    <li>
-      
-    <a href="?version={{ h.version }}">
-      v{{ h.version }}
-    </a>
 
-      — {{ h.modified_by }}
-      — {{ h.modified_at|date:"d/m/Y H:i" }}
-    </li>
-  {% endfor %}
-</ul>
+{% if version_count > 1 %}
+
+<button
+  id="btnChangeLog"
+  type="button"
+  class="btn btn-small"
+>
+📝 Modifications
+</button>
+
+<span class="text-muted" style="margin-left:6px;">
+  {{ version_count }} version{{ version_count|pluralize }}
+</span>
+{% endif %}
+
+
+
+
+
 </td>
 
         <th>Nom produit</th>
@@ -1225,6 +1237,56 @@ tr:hover {
     <div id="vracError" class="text-muted" style="margin-top:8px;"></div>
   </div>
 </div>
+
+
+<!-- ========================= -->
+<!-- MODAL HISTORIQUE MODIFICATIONS -->
+<!-- ========================= -->
+<div id="changeLogModal"
+     style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:9999;">
+
+  <div style="background:#0f2a38;
+              width:min(1100px,94vw);
+              max-height:85vh;
+              overflow:auto;
+              margin:6vh auto;
+              padding:16px;
+              border-radius:10px;">
+
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <h3 style="margin:0; color:#7fd9d6;">
+        Journal des modifications
+      </h3>
+      <button type="button"
+              id="changeLogClose"
+              class="btn btn-small">
+        ✖ Fermer
+      </button>
+    </div>
+
+    <div id="changeLogStatus"
+         class="text-muted"
+         style="margin:10px 0;">
+    </div>
+
+    <table style="width:100%; border-collapse:collapse;">
+      <thead>
+        <tr>
+          <th>Versions</th>
+          <th>Champ</th>
+          <th>Avant</th>
+          <th>Après</th>
+          <th>Modifié par</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody id="changeLogBody">
+        <!-- rempli en JS -->
+      </tbody>
+    </table>
+
+  </div>
+</div>
 <!-- ===================================================== -->
 <!-- JS GLOBAL : affiche input si _new -->
 <!-- ===================================================== -->
@@ -1710,6 +1772,117 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 </script>
+
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const btn = document.getElementById("btnChangeLog");
+  if (!btn) {
+    console.warn("btnChangeLog introuvable");
+    return;
+  }
+
+  btn.addEventListener("click", async (e) => {
+    e.preventDefault();
+
+    try {
+      const res = await fetch(
+        "/api/reglage/{{ reglage.id }}/changelog/"
+      );
+
+      if (!res.ok) {
+        alert("Erreur API : " + res.status);
+        return;
+      }
+
+      const data = await res.json();
+
+      if (!data.items || data.items.length === 0) {
+        alert("Aucune modification enregistrée.");
+        return;
+      }
+
+      
+
+    } catch (err) {
+      console.error(err);
+      alert("Erreur JS – voir la console");
+    }
+  });
+});
+</script>
+
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const btn = document.getElementById("btnChangeLog");
+  console.log("BTN CHANGELOG =", btn);
+});
+</script>
+
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const btn = document.getElementById("btnChangeLog");
+  const modal = document.getElementById("changeLogModal");
+  const closeBtn = document.getElementById("changeLogClose");
+  const body = document.getElementById("changeLogBody");
+  const status = document.getElementById("changeLogStatus");
+
+  if (!btn || !modal) return;
+
+  const open = () => modal.style.display = "block";
+  const close = () => modal.style.display = "none";
+
+  closeBtn.addEventListener("click", close);
+  modal.addEventListener("click", e => {
+    if (e.target === modal) close();
+  });
+
+  btn.addEventListener("click", async () => {
+    body.innerHTML = "";
+    status.textContent = "Chargement des modifications…";
+    open();
+
+    try {
+      const res = await fetch(
+        "/api/reglage/{{ reglage.id }}/changelog/"
+      );
+
+      if (!res.ok) {
+        status.textContent = "Erreur de chargement.";
+        return;
+      }
+
+      const data = await res.json();
+      const items = data.items || [];
+
+      if (!items.length) {
+        status.textContent = "Aucune modification enregistrée.";
+        return;
+      }
+
+      status.textContent = items.length + " modification(s)";
+
+      body.innerHTML = items.map(c => `
+        <tr>
+          <td>v${c.from} → v${c.to}</td>
+          <td>${c.field}</td>
+          <td style="color:#c0392b;">${c.old || "—"}</td>
+          <td style="color:#27ae60;">${c.new || "—"}</td>
+          <td>${c.by}</td>
+          <td>${c.at}</td>
+        </tr>
+      `).join("");
+
+    } catch (e) {
+      console.error(e);
+      status.textContent = "Erreur JavaScript.";
+    }
+  });
+});
+</script>
+
 
 </body>
 </html>

@@ -6,6 +6,8 @@ from django.conf import settings
 
 
 
+
+
 class ReglageEKOHistory(models.Model):
     reglage = models.ForeignKey(
         "ReglageEKO",
@@ -274,3 +276,31 @@ class ReglageEKO(models.Model):
 
     def __str__(self):
         return f"{self.ref} | OF {self.numeros_of} | Lot {self.numeros_lot}"
+    
+
+class ReglageEKOChange(models.Model):
+    reglage = models.ForeignKey(
+        ReglageEKO,
+        on_delete=models.CASCADE,
+        related_name="changes"
+    )
+
+    version_from = models.PositiveIntegerField()
+    version_to = models.PositiveIntegerField()
+
+    field = models.CharField(max_length=100)
+    old_value = models.TextField(null=True, blank=True)
+    new_value = models.TextField(null=True, blank=True)
+
+    changed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        on_delete=models.SET_NULL
+    )
+    changed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["version_to", "changed_at"]
+
+    def __str__(self):
+        return f"{self.field} v{self.version_from}→v{self.version_to}"

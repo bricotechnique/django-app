@@ -10,23 +10,56 @@ from django.utils.html import escape
 from django.db.models import F, ForeignKey
 from machines.models import (ReglageEKO, ReglageEKOHistory, Godet, Bec, Centreur, Bute, Pince, PinceF, Vrac)
 from django.forms.models import model_to_dict
-
-
-
-
 from datetime import date
 
-def serialize_snapshot(reglage):
-    raw = model_to_dict(reglage, exclude=["id", "version", "updated_at", "updated_by"])
-    snapshot = {}
+from .models import ReglageEKOChange
 
-    for k, v in raw.items():
-        if isinstance(v, date):
-            snapshot[k] = v.isoformat()
-        else:
-            snapshot[k] = v
 
-    return snapshot
+from django.forms.models import model_to_dict
+from datetime import date, datetime
+
+
+
+
+def serialize_snapshot(reglage: ReglageEKO) -> dict:
+    return {
+        "ref": reglage.ref,
+        "nom_produit": reglage.nom_produit,
+        "numeros_of": reglage.numeros_of,
+        "numeros_lot": reglage.numeros_lot,
+        "volume": reglage.volume,
+        "volume_demarrage": reglage.volume_demarrage,
+        "cadence": reglage.cadence,
+
+        "godet": reglage.godet.valeur if reglage.godet else None,
+        "butee_vis": reglage.butee_vis.valeur if reglage.butee_vis else None,
+
+        "pompes": [
+            {
+                "num": i,
+                "pompe": getattr(reglage, f"pompe_{i}"),
+                "valeur": getattr(reglage, f"valeur_{i}"),
+                "bec": (
+                    getattr(getattr(reglage, f"tube_bec_{i}"), "valeur", None)
+                ),
+                "centreur": (
+                    getattr(getattr(reglage, f"centerur_{i}"), "valeur", None)
+                ),
+                "motorise": getattr(reglage, f"motorise_{i}", None),
+            }
+            for i in range(1, 5)
+        ],
+    }
+
+def semantic_diff(before: dict, after: dict) -> dict:
+    diff = {}
+    for key in after:
+        if before.get(key) != after.get(key):
+            diff[key] = {
+                "avant": before.get(key),
+                "apres": after.get(key),
+            }
+    return diff
 
 def save_reglage_with_history(reglage, snapshot_before, user):
     reglage.version += 1
@@ -312,12 +345,13 @@ def apply_post_to_reglage(request, obj: ReglageEKO):
 
 def compute_diff(old, new):
     diff = {}
-    for k, old_val in old.items():
-        new_val = new.get(k)
-        if old_val != new_val:
-            diff[k] = {
-                "avant": old_val,
-                "apres": new_val,
+    all_keys = set(old.keys()) | set(new.keys())
+
+    for key in all_keys:
+        if old.get(key) != new.get(key):
+            diff[key] = {
+                "avant": old.get(key),
+                "apres": new.get(key),
             }
     return diff
 
@@ -527,69 +561,38 @@ def recherche_reglages(request):
 
 @login_required
 def detail_reglage(request, reglage_id):
+    # Récupération du réglage
     reglage = get_object_or_404(ReglageEKO, id=reglage_id)
 
-    version = request.GET.get("version")
-    history = None
-    diff = None
-    is_readonly = False
+    # ----- GESTION DES VERSIONS -----
+    
+    version_count = reglage.version
 
-    if version:
-        history = get_object_or_404(
-            ReglageEKOHistory,
-            reglage=reglage,
-            version=int(version),
-        )
-        print("===== DEBUG HISTORY =====")
-        print("Version demandée :", version)
-        print("History.version :", history.version)
-        print("Snapshot cadence :", history.snapshot.get("cadence"))
-        print("=========================")
 
-   
-
-        if version:
-            history = get_object_or_404(
-                ReglageEKOHistory,
-                reglage=reglage,
-                version=int(version),
-            )
-
-            is_readonly = True
-
-            prev = (
-                ReglageEKOHistory.objects
-                .filter(reglage=reglage, version__lt=history.version)
-                .order_by("-version")
-                .first()
-            )
-
-            if prev:
-                diff = compute_diff(prev.snapshot, history.snapshot)
-            
-
+    # ----- CONTEXTE MÉTIER (OBLIGATOIRE POUR LE TEMPLATE) -----
     context = {
         "reglage": reglage,
-        "mode": "history" if history else "view",
-        "history": history,
-        "diff": diff,
-        "is_readonly": is_readonly,
+        "version_count": version_count,
+        "mode": "view",
 
-        # ✅ affichage cohérent avec la version
+        # listes utilisées dans le template
         "pompes": build_pompes(reglage),
-
-        "ofs": ReglageEKO.objects.exclude(id=reglage.id)
-                .order_by("-date_reglage", "-id"),
-        "godets": Godet.objects.all().order_by("valeur"),
-        "becs": Bec.objects.all().order_by("valeur"),
-        "centreurs": Centreur.objects.all().order_by("valeur"),
-        "butes": Bute.objects.all().order_by("valeur"),
-        "pinces": Pince.objects.all().order_by("valeur"),
-        "pincesf": PinceF.objects.all().order_by("valeur"),
-        "vracs": Vrac.objects.all().order_by("ref"),
+        "godets": Godet.objects.all(),
+        "becs": Bec.objects.all(),
+        "centreurs": Centreur.objects.all(),
+        "butes": Bute.objects.all(),
+        "pinces": Pince.objects.all(),
+        "pincesf": PinceF.objects.all(),
+        "vracs": Vrac.objects.all(),
     }
 
-    return render(request, "machines/reglage_gabarit.html", context)
+    # ✅ RETOUR HTML CORRECT (CRITIQUE)
+    return render(
+        request,
+        "machines/reglage_gabarit.html",
+        context
+    )
+
 
 
 @login_required
@@ -598,29 +601,57 @@ def edit_reglage(request, reglage_id):
     reglage = get_object_or_404(ReglageEKO, id=reglage_id)
 
     if request.method == "POST":
+        action = request.POST.get("action", "save")
 
-        # ✅ appliquer les changements depuis le formulaire
+        # ✅ DUPLICATION → NOUVELLE LIGNÉE
+        if action == "duplicate":
+            source = reglage
+            target = ReglageEKO()
+
+            for field in ReglageEKO._meta.fields:
+                if field.name in ("id", "version", "updated_at", "updated_by"):
+                    continue
+                setattr(target, field.name, getattr(source, field.name))
+
+            target.version = 1
+            target.updated_by = request.user
+            target.save()
+
+            return redirect("detail_reglage", reglage_id=target.id)
+
+        # ✅ MODIFICATION NORMALE
+        snapshot_before = serialize_snapshot(reglage)
+
+       
+        before = serialize_snapshot(reglage)
+        old_version = reglage.version
+
         apply_post_to_reglage(request, reglage)
 
-        # ✅ snapshot APRÈS modification
-        snapshot = serialize_snapshot(reglage)
-
-        # ✅ incrémenter la version
         reglage.version += 1
         reglage.updated_by = request.user
         reglage.save()
 
-        # ✅ enregistrer la version APRÈS
-        ReglageEKOHistory.objects.create(
-            reglage=reglage,
-            version=reglage.version,
-            snapshot=snapshot,
-            modified_by=request.user,
-        )
+        after = serialize_snapshot(reglage)
+        diff = semantic_diff(before, after)
+
+        from .models import ReglageEKOChange
+
+        for field, values in diff.items():
+            ReglageEKOChange.objects.create(
+                reglage=reglage,
+                version_from=old_version,
+                version_to=reglage.version,
+                field=field,
+                old_value=str(values["avant"]),
+                new_value=str(values["apres"]),
+                changed_by=request.user,
+            )
+
 
         return redirect("detail_reglage", reglage_id=reglage.id)
 
-    # GET
+    # GET → mode édition
     context = {
         "reglage": reglage,
         "mode": "edit",
@@ -637,6 +668,7 @@ def edit_reglage(request, reglage_id):
     }
 
     return render(request, "machines/reglage_gabarit.html", context)
+
 # ============================================================
 # API
 # ============================================================
@@ -664,3 +696,28 @@ def api_vrac_detail(request, vrac_id):
         "labo_validation": v.labo_validation,
         "microbio_validation": v.microbio_validation,
     })
+
+
+@login_required
+@require_GET
+def api_reglage_changelog(request, reglage_id):
+    changes = (
+        ReglageEKOChange.objects
+        .filter(reglage_id=reglage_id)
+        .select_related("changed_by")
+    )
+
+    data = [
+        {
+            "from": c.version_from,
+            "to": c.version_to,
+            "field": c.field,
+            "old": c.old_value,
+            "new": c.new_value,
+            "by": str(c.changed_by) if c.changed_by else "—",
+            "at": c.changed_at.strftime("%d/%m/%Y %H:%M"),
+        }
+        for c in changes
+    ]
+
+    return JsonResponse({"items": data})
