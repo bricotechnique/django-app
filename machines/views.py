@@ -7,17 +7,62 @@ from django.utils import timezone
 from django.db import IntegrityError
 from django.views.decorators.http import require_GET, require_POST
 from django.utils.html import escape
-from django.db.models import F
-from machines.models import (
-    ReglageEKO, Godet, Bec, Centreur, Bute, Pince, PinceF, Vrac
-)
+from django.db.models import F, ForeignKey
+from machines.models import (ReglageEKO, ReglageEKOHistory, Godet, Bec, Centreur, Bute, Pince, PinceF, Vrac)
+from django.forms.models import model_to_dict
 
+
+
+
+from datetime import date
+
+def serialize_snapshot(reglage):
+    raw = model_to_dict(reglage, exclude=["id", "version", "updated_at", "updated_by"])
+    snapshot = {}
+
+    for k, v in raw.items():
+        if isinstance(v, date):
+            snapshot[k] = v.isoformat()
+        else:
+            snapshot[k] = v
+
+    return snapshot
+
+def save_reglage_with_history(reglage, snapshot_before, user):
+    reglage.version += 1
+    ReglageEKOHistory.objects.create(
+        reglage=reglage,
+        version=reglage.version,
+        snapshot=snapshot_before,
+        modified_by=user,
+    )
+  
+    reglage.updated_by = user
+    reglage.save()
+
+
+def has_changes(before: dict, after: dict) -> bool:
+    """
+    Retourne True si au moins un champ diffère entre before et after.
+    Gère :
+    - champs ajoutés
+    - champs supprimés
+    - champs modifiés
+    """
+    all_keys = set(before.keys()) | set(after.keys())
+
+    for key in all_keys:
+        if before.get(key) != after.get(key):
+            return True
+
+    return False
 
 @require_POST
 @login_required
 def create_vrac(request):
     ref = request.POST.get("ref", "").strip()
     nom = request.POST.get("nom", "").strip()
+    marque = request.POST.get("marque", "").strip()
 
     if not ref or not nom:
         return JsonResponse(
@@ -34,6 +79,7 @@ def create_vrac(request):
     vrac = Vrac.objects.create(
         ref=ref,
         Nom_vrac=nom,
+        marque=marque
     )
 
     return JsonResponse({
@@ -262,6 +308,51 @@ def apply_post_to_reglage(request, obj: ReglageEKO):
 
  #Historique
 
+
+
+def compute_diff(old, new):
+    diff = {}
+    for k, old_val in old.items():
+        new_val = new.get(k)
+        if old_val != new_val:
+            diff[k] = {
+                "avant": old_val,
+                "apres": new_val,
+            }
+    return diff
+
+@login_required
+def view_reglage_version(request, history_id):
+    h = get_object_or_404(ReglageEKOHistory, id=history_id)
+
+    fake_reglage = ReglageEKO()
+
+    for field, value in h.snapshot.items():
+        # Cas FK → utiliser *_id
+        if field in ("of_precedent", "of_lavage", "vrac_ref"):
+            setattr(fake_reglage, f"{field}_id", value)
+        # Champs normaux
+        elif hasattr(fake_reglage, field):
+            setattr(fake_reglage, field, value)
+
+    fake_reglage.id = h.reglage.id
+    fake_reglage.version = h.version
+
+    diff = compute_diff(
+        h.snapshot,
+        model_to_dict(h.reglage, exclude=["id"])
+    )
+
+    return render(request, "machines/reglage_gabarit.html", {
+        "reglage": fake_reglage,
+        "mode": "history",
+        "history": h,
+        "diff": diff,
+        "is_readonly": True,
+    })
+
+
+
 @require_GET
 @login_required
 def api_history_by_ref(request, ref):
@@ -433,16 +524,62 @@ def recherche_reglages(request):
 
     return render(request, "machines/recherche_reglages.html", {"reglages": reglages})
 
+
 @login_required
 def detail_reglage(request, reglage_id):
     reglage = get_object_or_404(ReglageEKO, id=reglage_id)
 
+    version = request.GET.get("version")
+    history = None
+    diff = None
+    is_readonly = False
+
+    if version:
+        history = get_object_or_404(
+            ReglageEKOHistory,
+            reglage=reglage,
+            version=int(version),
+        )
+        print("===== DEBUG HISTORY =====")
+        print("Version demandée :", version)
+        print("History.version :", history.version)
+        print("Snapshot cadence :", history.snapshot.get("cadence"))
+        print("=========================")
+
+   
+
+        if version:
+            history = get_object_or_404(
+                ReglageEKOHistory,
+                reglage=reglage,
+                version=int(version),
+            )
+
+            is_readonly = True
+
+            prev = (
+                ReglageEKOHistory.objects
+                .filter(reglage=reglage, version__lt=history.version)
+                .order_by("-version")
+                .first()
+            )
+
+            if prev:
+                diff = compute_diff(prev.snapshot, history.snapshot)
+            
+
     context = {
         "reglage": reglage,
-        "mode": "view",
+        "mode": "history" if history else "view",
+        "history": history,
+        "diff": diff,
+        "is_readonly": is_readonly,
+
+        # ✅ affichage cohérent avec la version
         "pompes": build_pompes(reglage),
 
-        "ofs": ReglageEKO.objects.exclude(id=reglage.id).order_by("-date_reglage", "-id"),
+        "ofs": ReglageEKO.objects.exclude(id=reglage.id)
+                .order_by("-date_reglage", "-id"),
         "godets": Godet.objects.all().order_by("valeur"),
         "becs": Bec.objects.all().order_by("valeur"),
         "centreurs": Centreur.objects.all().order_by("valeur"),
@@ -451,69 +588,35 @@ def detail_reglage(request, reglage_id):
         "pincesf": PinceF.objects.all().order_by("valeur"),
         "vracs": Vrac.objects.all().order_by("ref"),
     }
+
     return render(request, "machines/reglage_gabarit.html", context)
+
 
 @login_required
 @permission_required("machines.change_reglageeko", raise_exception=True)
 def edit_reglage(request, reglage_id):
-
-    
     reglage = get_object_or_404(ReglageEKO, id=reglage_id)
 
-    ofs = ReglageEKO.objects.exclude(id=reglage.id).order_by("-date_reglage", "-id")
-    godets = Godet.objects.all().order_by("valeur")
-    becs = Bec.objects.all().order_by("valeur")
-    centreurs = Centreur.objects.all().order_by("valeur")
-    butes = Bute.objects.all().order_by("valeur")
-    pinces = Pince.objects.all().order_by("valeur")
-    pincesf = PinceF.objects.all().order_by("valeur")
-
-    vracs = Vrac.objects.all().order_by("ref")
-    
-
-
     if request.method == "POST":
-        action = request.POST.get("action", "save")
 
-        target = reglage
-        source_of = reglage.numeros_of  
+        # ✅ appliquer les changements depuis le formulaire
+        apply_post_to_reglage(request, reglage)
 
-        if action == "duplicate":
-            target = ReglageEKO()
-            # champs minimum non blank
-            target.ref = request.POST.get("ref", "COPIE")
-            target.numeros_lot = request.POST.get("numeros_lot", "")
-            target.nom_produit = request.POST.get("nom_produit", "")
+        # ✅ snapshot APRÈS modification
+        snapshot = serialize_snapshot(reglage)
 
-        apply_post_to_reglage(request, target)
+        # ✅ incrémenter la version
+        reglage.version += 1
+        reglage.updated_by = request.user
+        reglage.save()
 
-
-        posted_of = clean(request.POST.get("numeros_of"))  # nécessite un input dans le template
-
-        if is_blank_reglage(target):
-            target.numeros_of = None
-
-        elif action == "duplicate" and (posted_of == "" or (source_of and posted_of == source_of)):
-            target.numeros_of = None
-
-        elif posted_of != "" and action == "duplicate":
-            target.numeros_of = make_unique_of(posted_of)
-
-        elif posted_of != "" and action == "save":
-            # ✅ édition normale : on garde exactement l’OF saisi
-            target.numeros_of = posted_of
-        else:
-            # Save normal : ne pas écraser l’OF existant si champ laissé vide
-            if action == "duplicate":
-                target.numeros_of = None
-            # action == save -> on conserve celui existant
-            # (rien à faire)
-
-        target.save()
-
-        # OPTION 2 : duplication -> détail de la copie
-        if action == "duplicate":
-            return redirect("detail_reglage", reglage_id=target.id)
+        # ✅ enregistrer la version APRÈS
+        ReglageEKOHistory.objects.create(
+            reglage=reglage,
+            version=reglage.version,
+            snapshot=snapshot,
+            modified_by=request.user,
+        )
 
         return redirect("detail_reglage", reglage_id=reglage.id)
 
@@ -522,18 +625,18 @@ def edit_reglage(request, reglage_id):
         "reglage": reglage,
         "mode": "edit",
         "pompes": build_pompes(reglage),
-
-        "ofs": ofs,
-        "godets": godets,
-        "becs": becs,
-        "centreurs": centreurs,
-        "butes": butes,
-        "pinces": pinces,
-        "pincesf": pincesf,
-        "vracs": vracs,
+        "ofs": ReglageEKO.objects.exclude(id=reglage.id)
+                .order_by("-date_reglage", "-id"),
+        "godets": Godet.objects.all().order_by("valeur"),
+        "becs": Bec.objects.all().order_by("valeur"),
+        "centreurs": Centreur.objects.all().order_by("valeur"),
+        "butes": Bute.objects.all().order_by("valeur"),
+        "pinces": Pince.objects.all().order_by("valeur"),
+        "pincesf": PinceF.objects.all().order_by("valeur"),
+        "vracs": Vrac.objects.all().order_by("ref"),
     }
-    return render(request, "machines/reglage_gabarit.html", context)
 
+    return render(request, "machines/reglage_gabarit.html", context)
 # ============================================================
 # API
 # ============================================================

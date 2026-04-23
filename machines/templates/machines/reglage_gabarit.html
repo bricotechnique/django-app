@@ -397,6 +397,46 @@ tr:hover {
 <!-- ===================================================== -->
 <!-- INFORMATIONS PRINCIPALES -->
 <!-- ===================================================== -->
+
+{% if mode == "history" %}
+<div class="card" style="border-left:4px solid #c0392b;">
+  <h2>
+    Version historique v{{ reglage.version }}
+  </h2>
+  <p class="text-muted">
+    Modifiée par <strong>{{ history.modified_by }}</strong>
+    le {{ history.modified_at|date:"d/m/Y H:i" }}
+  </p>
+  <a href="{% url 'detail_reglage' reglage.id %}" class="btn btn-small">
+    ← Retour à la version actuelle
+  </a>
+</div>
+{% endif %}
+
+{% if mode == "history" %}
+<div class="card">
+  <h2>Modifications introduites par cette version</h2>
+
+  {% if diff %}
+    <table>
+      <tr>
+        <th>Champ</th>
+        <th>Avant</th>
+        <th>Après</th>
+      </tr>
+      {% for field, values in diff.items %}
+        <tr>
+          <td>{{ field }}</td>
+          <td style="color:#c0392b">{{ values.avant }}</td>
+          <td style="color:#27ae60">{{ values.apres }}</td>
+        </tr>
+      {% endfor %}
+    </table>
+  {% else %}
+    <p class="text-muted">Aucune modification détectée.</p>
+  {% endif %}
+</div>
+{% endif %}
 <h2>Informations principales</h2>
 <table>
   <tr>
@@ -416,6 +456,27 @@ tr:hover {
           🕘 Historique
         </button>
       {% endif %}
+
+
+
+    </td>
+    <td>
+    
+      <h3>Historique</h3>
+<ul>
+  {% for h in reglage.history.all %}
+    <li>
+      
+    <a href="?version={{ h.version }}">
+      v{{ h.version }}
+    </a>
+
+      — {{ h.modified_by }}
+      — {{ h.modified_at|date:"d/m/Y H:i" }}
+    </li>
+  {% endfor %}
+</ul>
+</td>
 
         <th>Nom produit</th>
     <td>

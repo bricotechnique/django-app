@@ -11,6 +11,9 @@ set DATABASE_URL=postgresql://postgres:ggKAYkmImDrPBWSZUEvBUeCPUHKbQWra@yamabiko
 
 REM ---- Nom base locale ----
 set LOCAL_DB=reglages_machine_dev
+set LOCAL_USER=postgres
+set LOCAL_HOST=localhost
+set LOCAL_PORT=5432
 
 REM ---- Fichier dump ----
 set DUMP_FILE=prod_backup.dump
@@ -36,16 +39,49 @@ echo ✅ Export PROD terminé : %DUMP_FILE%
 echo.
 
 echo ==============================
+echo Recréation de la base locale
+echo ==============================
+
+%PG_BIN%\psql.exe ^
+  -h %LOCAL_HOST% ^
+  -p %LOCAL_PORT% ^
+  -U %LOCAL_USER% ^
+  -d postgres ^
+  -c "DROP DATABASE IF EXISTS %LOCAL_DB%;"
+
+IF ERRORLEVEL 1 (
+  echo ❌ Erreur lors du DROP DATABASE
+  pause
+  exit /b 1
+)
+
+%PG_BIN%\psql.exe ^
+  -h %LOCAL_HOST% ^
+  -p %LOCAL_PORT% ^
+  -U %LOCAL_USER% ^
+  -d postgres ^
+  -c "CREATE DATABASE %LOCAL_DB%;"
+
+IF ERRORLEVEL 1 (
+  echo ❌ Erreur lors du CREATE DATABASE
+  pause
+  exit /b 1
+)
+
+echo ✅ Base locale recréée
+echo.
+
+echo ==============================
 echo Import vers PostgreSQL LOCAL
 echo ==============================
 
 %PG_BIN%\pg_restore.exe ^
-  -h localhost ^
-  -p 5432 ^
-  -U postgres ^
-  --dbname=%LOCAL_DB% ^
-  --clean ^
+  -h %LOCAL_HOST% ^
+  -p %LOCAL_PORT% ^
+  -U %LOCAL_USER% ^
+  -d %LOCAL_DB% ^
   --no-owner ^
+  --no-privileges ^
   %DUMP_FILE%
 
 IF ERRORLEVEL 1 (
@@ -58,6 +94,6 @@ echo ✅ Import LOCAL terminé avec succès
 echo.
 
 echo ==============================
-echo✅ Base PROD copiée en LOCAL
+echo ✅ Base PROD copiée en LOCAL
 echo ==============================
 pause

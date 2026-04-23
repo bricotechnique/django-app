@@ -1,5 +1,37 @@
 from django.db import models
 
+from django.conf import settings
+from django.db import models
+from django.conf import settings
+
+
+
+class ReglageEKOHistory(models.Model):
+    reglage = models.ForeignKey(
+        "ReglageEKO",
+        related_name="history",
+        on_delete=models.CASCADE
+    )
+
+    version = models.PositiveIntegerField()
+
+    snapshot = models.JSONField()
+
+    modified_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL
+    )
+    modified_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-version"]
+
+    def __str__(self):
+        return f"{self.reglage.ref} v{self.version}"
+
+
 
 
 class Vrac(models.Model):
@@ -67,6 +99,8 @@ class ReglageEKO(models.Model):
     # =====================================================
     # IDENTIFICATION / TRACABILITÉ
     # =====================================================
+
+    version = models.PositiveIntegerField(default=1)
     ref = models.CharField(max_length=200)
     nom_produit = models.CharField(max_length=200, blank=True)
 
@@ -221,6 +255,19 @@ class ReglageEKO(models.Model):
     # =====================================================
     cree_le = models.DateTimeField(auto_now_add=True)
     modifie_le = models.DateTimeField(auto_now=True)
+
+
+
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.ref} v{self.version}"
 
     class Meta:
         ordering = ["-date_reglage"]
