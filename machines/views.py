@@ -21,36 +21,205 @@ from datetime import date, datetime
 
 
 
-def serialize_snapshot(reglage: ReglageEKO) -> dict:
+def serialize_snapshot(reglage):
+    """
+    Snapshot MÉTIER stable du réglage.
+    Toutes les valeurs sont normalisées afin d'éviter
+    les faux positifs dans l'historique.
+    """
+
+    # ----------------------
+    # Normaliseurs
+    # ----------------------
+    def norm_str(v):
+        if v is None:
+            return None
+        v = str(v).strip()
+        return v if v != "" else None
+
+    def norm_bool(v):
+        return v in (True, "True", "true", "1", 1, "Oui", "oui", "Vrai", "vrai")
+
+    def pompe_snapshot(num):
+        bec = getattr(reglage, f"tube_bec_{num}", None)
+        centreur = getattr(reglage, f"centerur_{num}", None)
+
+        return {
+            "pompe": norm_str(getattr(reglage, f"pompe_{num}", None)),
+            "valeur": getattr(reglage, f"valeur_{num}", None),
+            "bec": bec.valeur if bec else None,
+            "centreur": centreur.valeur if centreur else None,
+            "motorise": norm_bool(getattr(reglage, f"motorise_{num}", None)),
+        }
+
+    # ----------------------
+    # Snapshot principal
+    # ----------------------
     return {
-        "ref": reglage.ref,
-        "nom_produit": reglage.nom_produit,
-        "numeros_of": reglage.numeros_of,
-        "numeros_lot": reglage.numeros_lot,
+        # =========
+        # IDENTITÉ
+        # =========
+        "ref": norm_str(reglage.ref),
+        "numeros_of": norm_str(reglage.numeros_of),
+        "numeros_lot": norm_str(reglage.numeros_lot),
+        "nom_produit": norm_str(reglage.nom_produit),
+        "regleur": norm_str(reglage.regleur),
+
+        # ==================
+        # PARAMÈTRES GÉNÉRAUX
+        # ==================
         "volume": reglage.volume,
         "volume_demarrage": reglage.volume_demarrage,
         "cadence": reglage.cadence,
 
+        # =========
+        # TEXTE
+        # =========
+        "moussant": norm_str(reglage.moussant),
+        "ref_flacon": norm_str(reglage.ref_flacon),
+        "programme": norm_str(reglage.programme),
+        "filtre": norm_str(reglage.filtre),
+        "type_bec": norm_str(reglage.type_bec),
+
+        "ctrl_jus_h": norm_str(reglage.ctrl_jus_h),
+        "ctrl_jus_prof": norm_str(reglage.ctrl_jus_prof),
+        "ctrl_ultra": norm_str(reglage.ctrl_ultra),
+
+        "presence_marteau": norm_str(reglage.presence_marteau),
+        "presence_visseuse": norm_str(reglage.presence_visseuse),
+        "visseuse": norm_str(reglage.visseuse),
+        "convoyeur": norm_str(reglage.convoyeur),
+
+        "presence_cueilleur": norm_str(reglage.presence_cueilleur),
+        "cueilleur": norm_str(reglage.cueilleur),
+        "cueilleur_1": norm_str(reglage.cueilleur_1),
+        "cueilleur_2": norm_str(reglage.cueilleur_2),
+        "cueilleur_3": norm_str(reglage.cueilleur_3),
+
+        "etiquette": norm_str(reglage.etiquette),
+        "consigne_etiquette": norm_str(reglage.consigne_etiquette),
+        "etiqueteuse": norm_str(reglage.etiqueteuse),
+
+        # ==================
+        # POMPES (STRUCTURE STABLE)
+        # ==================
+        "pompes": {
+            1: pompe_snapshot(1),
+            2: pompe_snapshot(2),
+            3: pompe_snapshot(3),
+            4: pompe_snapshot(4),
+        },
+
+        # ==================
+        # FK MÉTIER
+        # ==================
         "godet": reglage.godet.valeur if reglage.godet else None,
         "butee_vis": reglage.butee_vis.valeur if reglage.butee_vis else None,
+        "pince_vis": reglage.pince_vis.valeur if reglage.pince_vis else None,
+        "pince_f": reglage.pince_f.valeur if reglage.pince_f else None,
 
-        "pompes": [
-            {
-                "num": i,
-                "pompe": getattr(reglage, f"pompe_{i}"),
-                "valeur": getattr(reglage, f"valeur_{i}"),
-                "bec": (
-                    getattr(getattr(reglage, f"tube_bec_{i}"), "valeur", None)
-                ),
-                "centreur": (
-                    getattr(getattr(reglage, f"centerur_{i}"), "valeur", None)
-                ),
-                "motorise": getattr(reglage, f"motorise_{i}", None),
-            }
-            for i in range(1, 5)
-        ],
+        # ==================
+        # VRAC
+        # ==================
+        "vrac": {
+            "ref": reglage.vrac_ref.ref,
+            "nom": reglage.vrac_ref.Nom_vrac,
+        } if reglage.vrac_ref else None,
     }
 
+
+def diff_pompes(reglage, before, after, user, old_version, new_version):
+    champs = ["pompe", "valeur", "bec", "centreur", "motorise"]
+
+    for num in range(1, 5):
+        pompe_avant = before["pompes"][num]
+        pompe_apres = after["pompes"][num]
+
+        for champ in champs:
+            old = pompe_avant[champ]
+            new = pompe_apres[champ]
+
+            if old != new:
+                ReglageEKOChange.objects.create(
+                    reglage=reglage,
+                    version_from=old_version,
+                    version_to=new_version,
+                    field=f"Pompe {num} – {champ}",
+                    old_value=old,
+                    new_value=new,
+                    changed_by=user,
+                )
+
+def diff_champs_simples(reglage, before, after, user, old_version, new_version):
+    champs = [
+        "ref",
+        "numeros_of",
+        "numeros_lot",
+        "nom_produit",
+        "regleur",
+        "volume",
+        "volume_demarrage",
+        "cadence",
+        "moussant",
+        "ref_flacon",
+        "programme",
+        "filtre",
+        "type_bec",
+        "ctrl_jus_h",
+        "ctrl_jus_prof",
+        "ctrl_ultra",
+        "presence_marteau",
+        "presence_visseuse",
+        "visseuse",
+        "convoyeur",
+        "presence_cueilleur",
+        "cueilleur",
+        "cueilleur_1",
+        "cueilleur_2",
+        "cueilleur_3",
+        "etiquette",
+        "consigne_etiquette",
+        "etiqueteuse",
+    ]
+
+    for champ in champs:
+        old = before.get(champ)
+        new = after.get(champ)
+
+        if old != new:
+            ReglageEKOChange.objects.create(
+                reglage=reglage,
+                version_from=old_version,
+                version_to=new_version,
+                field=champ.replace("_", " ").capitalize(),
+                old_value=old,
+                new_value=new,
+                changed_by=user,
+            )
+
+def diff_fk_metiers(reglage, before, after, user, old_version, new_version):
+    champs_fk = {
+        "godet": "Godet",
+        "butee_vis": "Butée vis",
+        "pince_vis": "Pince vis",
+        "pince_f": "Pince flacon",
+        "vrac": "VRAC",
+    }
+
+    for key, label in champs_fk.items():
+        old = before.get(key)
+        new = after.get(key)
+
+        if old != new:
+            ReglageEKOChange.objects.create(
+                reglage=reglage,
+                version_from=old_version,
+                version_to=new_version,
+                field=label,
+                old_value=old,
+                new_value=new,
+                changed_by=user,
+            )
 def semantic_diff(before: dict, after: dict) -> dict:
     diff = {}
     for key in after:
@@ -523,18 +692,18 @@ def delete_reglage(request, reglage_id):
 # Recherche / Détail / Edit + Dupliquer
 # ============================================================
 
+
 @login_required
 def recherche_reglages(request):
-    
+
     reglages = (
         ReglageEKO.objects
         .all()
         .order_by(
             F("date_reglage").desc(nulls_last=True),
             F("id").desc()
+        )
     )
-)
-
 
     ref = request.GET.get("ref")
     nom = request.GET.get("nom")
@@ -545,18 +714,27 @@ def recherche_reglages(request):
 
     if ref:
         reglages = reglages.filter(ref__icontains=ref)
+
     if nom:
         reglages = reglages.filter(nom_produit__icontains=nom)
+
     if vrac:
-        reglages = reglages.filter(vrac__icontains=vrac)
+        reglages = reglages.filter(vrac_ref__ref__icontains=vrac)
+
     if lot:
         reglages = reglages.filter(numeros_lot__icontains=lot)
+
     if of_:
         reglages = reglages.filter(numeros_of__icontains=of_)
+
     if volume:
         reglages = reglages.filter(volume=volume)
 
-    return render(request, "machines/recherche_reglages.html", {"reglages": reglages})
+    return render(
+        request,
+        "machines/recherche_reglages.html",
+        {"reglages": reglages}
+    )
 
 
 @login_required
@@ -633,21 +811,34 @@ def edit_reglage(request, reglage_id):
         reglage.save()
 
         after = serialize_snapshot(reglage)
-        diff = semantic_diff(before, after)
+        after = serialize_snapshot(reglage)
 
-        from .models import ReglageEKOChange
+        diff_pompes(
+            reglage=reglage,
+            before=before,
+            after=after,
+            user=request.user,
+            old_version=old_version,
+            new_version=reglage.version,
+        )
 
-        for field, values in diff.items():
-            ReglageEKOChange.objects.create(
-                reglage=reglage,
-                version_from=old_version,
-                version_to=reglage.version,
-                field=field,
-                old_value=str(values["avant"]),
-                new_value=str(values["apres"]),
-                changed_by=request.user,
-            )
+        diff_champs_simples(
+            reglage=reglage,
+            before=before,
+            after=after,
+            user=request.user,
+            old_version=old_version,
+            new_version=reglage.version,
+        )
 
+        diff_fk_metiers(
+            reglage=reglage,
+            before=before,
+            after=after,
+            user=request.user,
+            old_version=old_version,
+            new_version=reglage.version,
+        )
 
         return redirect("detail_reglage", reglage_id=reglage.id)
 

@@ -931,6 +931,15 @@ tr:hover {
         {% if reglage.h_marteau != None %}{{ reglage.h_marteau|floatformat:'g' }}{% else %}_ {% endif %}
       {% endif %}
     </td>
+    <th>Tête marteau</th>
+    <td>
+     {% if mode == "edit" %}
+        <input type="text" name="embout" value="{{ reglage.embout|default:'' }}" maxlength="50">
+      {% else %}
+        {{ reglage.embout|default:"—" }}
+      {% endif %}
+    </td>
+
   </tr>
 </table>
 
