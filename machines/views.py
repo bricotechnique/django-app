@@ -424,7 +424,6 @@ def apply_post_to_reglage(request, obj: ReglageEKO):
     obj.ref = request.POST.get("ref", "")
     obj.nom_produit = request.POST.get("nom_produit", "")
     obj.numeros_lot = request.POST.get("numeros_lot", "")
-    obj.regleur = request.POST.get("regleur", "")
     obj.observation = request.POST.get("observation", "")
     obj.date_reglage = request.POST.get("date_reglage") or None
 
@@ -805,6 +804,8 @@ def edit_reglage(request, reglage_id):
         old_version = reglage.version
 
         apply_post_to_reglage(request, reglage)
+
+        reglage.regleur = request.user.get_username()
 
         reglage.version += 1
         reglage.updated_by = request.user

@@ -568,11 +568,8 @@ tr:hover {
   <tr>
     <th>Régleur</th>
     <td>
-      {% if mode == "edit" %}
-        <input type="text" name="regleur" value="{{ reglage.regleur|default:'' }}" maxlength="120">
-      {% else %}
         {{ reglage.regleur|default:"—" }}
-      {% endif %}
+      
     </td>
 
     <th>Volume démarrage</th>
