@@ -426,6 +426,7 @@ def apply_post_to_reglage(request, obj: ReglageEKO):
     obj.numeros_lot = request.POST.get("numeros_lot", "")
     obj.observation = request.POST.get("observation", "")
     obj.date_reglage = request.POST.get("date_reglage") or None
+    
 
     # Floats principaux
     obj.volume = to_float(request.POST.get("volume"))
@@ -710,6 +711,7 @@ def recherche_reglages(request):
     lot = request.GET.get("lot")
     of_ = request.GET.get("of")
     volume = request.GET.get("volume")
+    machine = request.GET.get("machine")
 
     if ref:
         reglages = reglages.filter(ref__icontains=ref)
@@ -728,6 +730,9 @@ def recherche_reglages(request):
 
     if volume:
         reglages = reglages.filter(volume=volume)
+    
+    if machine:
+        reglages = reglages.filter(machine=machine)
 
     return render(
         request,

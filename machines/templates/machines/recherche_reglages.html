@@ -396,6 +396,10 @@ tr:hover {
     <label>Volume</label>
     <input type="text" name="volume">
   </div>
+  <div class="'field">
+    <label>Machine</label>
+    <input type="text" name="machine">
+  </div>
 
   <div class="actions">
     <button type="submit" class="btn btn-save">🔍 Rechercher</button>
@@ -423,6 +427,7 @@ tr:hover {
         <th>OF</th>
         <th>Lot</th>
         <th>Volume</th>
+        <th>Machine</th>
     </tr>
 
     {% for r in reglages %}
@@ -434,6 +439,7 @@ tr:hover {
         <td><a class="rowlink" href="{% url 'detail_reglage' r.id %}">{{ r.numeros_of }}</a></td>
         <td><a class="rowlink" href="{% url 'detail_reglage' r.id %}">{{ r.numeros_lot }}</a></td>
         <td><a class="rowlink" href="{% url 'detail_reglage' r.id %}">{{ r.volume }}</a></td>
+        <td><a class="rowlink" href="{% url 'detail_reglage' r.id %}">{{ r.machine }}</a></td>
     </tr>
     {% endfor %}
 </table>

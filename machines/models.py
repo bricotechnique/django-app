@@ -105,6 +105,13 @@ class ReglageEKO(models.Model):
     version = models.PositiveIntegerField(default=1)
     ref = models.CharField(max_length=200)
     nom_produit = models.CharField(max_length=200, blank=True)
+    machine_choices = [("EKO", "EKO"),("G1", "G1"),("K", "K"),("N", "N"),("A", "A"),("Dumek", "Dumek"),]
+
+    machine = models.CharField(
+        max_length=10,
+        choices=machine_choices,
+        default="EKO"
+    )
 
     
     numeros_of = models.CharField(
